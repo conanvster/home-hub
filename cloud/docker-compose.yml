@@ -2,8 +2,10 @@ version: "3.9"
 
 services:
   mongo:
-    image: mongo:7
+    image: mongo:6
     restart: unless-stopped
+    security_opt:
+      - seccomp:unconfined
     volumes:
       - mongo_data:/data/db
     networks:
@@ -14,8 +16,8 @@ services:
     restart: unless-stopped
     env_file: ./server/.env
     ports:
-      - "3001:3001"   # HTTP API
-      - "8090:8090"   # TCP listener for GPS trackers
+      - "3001:3001"
+      - "8090:8090"
     depends_on:
       - mongo
     networks:
