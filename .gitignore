@@ -1,0 +1,17 @@
+node_modules/
+
+# Env файли з секретами — тільки приклади дозволені
+.env
+.env.production
+.env.local
+!.env.example
+
+dist/
+build/
+
+mongo_data/
+*.dump
+*.dump.gz
+*.dump.html
+
+.DS_Store

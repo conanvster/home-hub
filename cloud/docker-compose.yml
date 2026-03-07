@@ -1,0 +1,51 @@
+version: "3.9"
+
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - homehub
+
+  server:
+    build: ./server
+    restart: unless-stopped
+    env_file: ./server/.env
+    ports:
+      - "3001:3001"   # HTTP API
+      - "8090:8090"   # TCP listener for GPS trackers
+    depends_on:
+      - mongo
+    networks:
+      - homehub
+
+  web:
+    build: ./web
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - certbot_certs:/etc/letsencrypt
+      - certbot_www:/var/www/certbot
+    depends_on:
+      - server
+    networks:
+      - homehub
+
+  certbot:
+    image: certbot/certbot
+    volumes:
+      - certbot_certs:/etc/letsencrypt
+      - certbot_www:/var/www/certbot
+    entrypoint: /bin/sh -c "trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done"
+
+volumes:
+  mongo_data:
+  certbot_certs:
+  certbot_www:
+
+networks:
+  homehub:
