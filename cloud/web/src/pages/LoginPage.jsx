@@ -19,8 +19,10 @@ export default function LoginPage() {
       const data = await api.login(email, password);
       login(data.token, data.user);
       navigate("/");
-    } catch {
-      setError("Невірний email або пароль");
+    } catch (err) {
+      if (err.status === 401) setError("Невірний email або пароль");
+      else if (err.status === 502 || err.status === 503) setError("Сервер тимчасово недоступний. Спробуйте пізніше.");
+      else setError(`Помилка: ${err.message}`);
     } finally {
       setLoading(false);
     }

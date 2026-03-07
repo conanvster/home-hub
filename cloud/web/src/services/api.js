@@ -14,7 +14,18 @@ async function request(path, options = {}) {
       ...options.headers,
     },
   });
-  if (!res.ok) throw new Error(`API error ${res.status}`);
+  if (!res.ok) {
+    let message;
+    try {
+      const body = await res.json();
+      message = body.error || `HTTP ${res.status}`;
+    } catch {
+      message = `HTTP ${res.status}`;
+    }
+    const err = new Error(message);
+    err.status = res.status;
+    throw err;
+  }
   return res.json();
 }
 
