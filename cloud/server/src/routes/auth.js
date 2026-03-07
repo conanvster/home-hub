@@ -1,7 +1,9 @@
 const router = require("express").Router();
+const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const auth = require("../middleware/auth");
+const { sendPasswordReset } = require("../services/email");
 
 // POST /api/auth/login
 router.post("/login", async (req, res) => {
@@ -20,6 +22,70 @@ router.post("/login", async (req, res) => {
   );
 
   res.json({ token, user: { id: user._id, email: user.email, role: user.role } });
+});
+
+// POST /api/auth/register
+router.post("/register", async (req, res) => {
+  const { email, password } = req.body;
+  if (!email || !password) return res.status(400).json({ error: "Email and password required" });
+  if (password.length < 6) return res.status(400).json({ error: "Password must be at least 6 characters" });
+
+  const exists = await User.findOne({ email });
+  if (exists) return res.status(409).json({ error: "Email already registered" });
+
+  const user = await User.create({ email, password, role: "viewer" });
+
+  const token = jwt.sign(
+    { id: user._id, email: user.email, role: user.role },
+    process.env.JWT_SECRET,
+    { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
+  );
+
+  res.status(201).json({ token, user: { id: user._id, email: user.email, role: user.role } });
+});
+
+// POST /api/auth/forgot-password
+router.post("/forgot-password", async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: "Email required" });
+
+  const user = await User.findOne({ email });
+  // Always return success to avoid email enumeration
+  if (!user) return res.json({ message: "If this email exists, a reset link has been sent" });
+
+  const token = crypto.randomBytes(32).toString("hex");
+  user.resetToken = token;
+  user.resetTokenExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+  await user.save();
+
+  try {
+    await sendPasswordReset(email, token);
+  } catch (err) {
+    console.error("[Email] Failed to send reset email:", err.message);
+    return res.status(500).json({ error: "Failed to send email. Try again later." });
+  }
+
+  res.json({ message: "If this email exists, a reset link has been sent" });
+});
+
+// POST /api/auth/reset-password
+router.post("/reset-password", async (req, res) => {
+  const { token, password } = req.body;
+  if (!token || !password) return res.status(400).json({ error: "Token and password required" });
+  if (password.length < 6) return res.status(400).json({ error: "Password must be at least 6 characters" });
+
+  const user = await User.findOne({
+    resetToken: token,
+    resetTokenExpires: { $gt: new Date() },
+  });
+  if (!user) return res.status(400).json({ error: "Invalid or expired reset token" });
+
+  user.password = password;
+  user.resetToken = null;
+  user.resetTokenExpires = null;
+  await user.save();
+
+  res.json({ message: "Password updated successfully" });
 });
 
 // GET /api/auth/me

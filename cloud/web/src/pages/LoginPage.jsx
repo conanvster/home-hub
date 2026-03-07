@@ -56,6 +56,10 @@ export default function LoginPage() {
             {loading ? "Вхід..." : "Увійти"}
           </button>
         </form>
+        <div className="mt-4 flex flex-col gap-2 text-center text-sm">
+          <a href="/forgot-password" className="text-blue-400 hover:underline">Забули пароль?</a>
+          <a href="/register" className="text-gray-400 hover:text-white">Немає акаунту? Зареєструватись</a>
+        </div>
       </div>
     </div>
   );
