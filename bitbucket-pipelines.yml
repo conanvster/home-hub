@@ -12,7 +12,6 @@ definitions:
         script:
           - npm ci --prefix cloud/web
           - npm run build --prefix cloud/web
-          - VITE_MODE=local npm run build --prefix cloud/web
 
     - step: &deploy-cloud
         name: Deploy to cloud
