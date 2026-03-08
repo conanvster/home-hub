@@ -24,7 +24,8 @@ export default function ForgotPasswordPage() {
   return (
     <div className="min-h-screen bg-gray-900 flex items-center justify-center">
       <div className="bg-gray-800 p-8 rounded-xl w-full max-w-sm">
-        <h1 className="text-white text-2xl font-bold mb-2 text-center">Відновлення паролю</h1>
+        <h1 className="text-white text-2xl font-bold text-center">🏠 Home Hub</h1>
+        <p className="text-gray-500 text-sm text-center mb-2">Відновлення паролю</p>
         {sent ? (
           <div className="text-center">
             <p className="text-green-400 mt-4">Якщо цей email зареєстровано — лист надіслано. Перевірте пошту.</p>

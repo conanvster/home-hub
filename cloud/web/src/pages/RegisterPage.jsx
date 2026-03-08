@@ -32,7 +32,8 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen bg-gray-900 flex items-center justify-center">
       <div className="bg-gray-800 p-8 rounded-xl w-full max-w-sm">
-        <h1 className="text-white text-2xl font-bold mb-6 text-center">Реєстрація</h1>
+        <h1 className="text-white text-2xl font-bold text-center">🏠 Home Hub</h1>
+        <p className="text-gray-500 text-sm text-center mb-6">Створити акаунт</p>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <input
             type="email"

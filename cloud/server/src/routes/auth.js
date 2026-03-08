@@ -3,7 +3,7 @@ const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const auth = require("../middleware/auth");
-const { sendPasswordReset } = require("../services/email");
+const { sendPasswordReset, sendTelegramCode } = require("../services/email");
 
 // POST /api/auth/login
 router.post("/login", async (req, res) => {
@@ -86,6 +86,23 @@ router.post("/reset-password", async (req, res) => {
   await user.save();
 
   res.json({ message: "Password updated successfully" });
+});
+
+// POST /api/auth/telegram-link — згенерувати код для прив'язки через сайт (Варіант C)
+router.post("/telegram-link", auth, async (req, res) => {
+  const code = Math.floor(100000 + Math.random() * 900000).toString();
+  const user = await User.findById(req.user.id);
+  user.telegramLinkCode = code;
+  user.telegramLinkCodeExpires = new Date(Date.now() + 15 * 60 * 1000);
+  user.telegramLinkChatId = null;
+  await user.save();
+  res.json({ code });
+});
+
+// DELETE /api/auth/telegram-link — відключити Telegram
+router.delete("/telegram-link", auth, async (req, res) => {
+  await User.findByIdAndUpdate(req.user.id, { telegramId: null });
+  res.json({ message: "Telegram відключено" });
 });
 
 // GET /api/auth/me

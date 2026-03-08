@@ -103,8 +103,107 @@ function TrackingPanel({ trackers, latest, selectedImei, onSelect, dateFrom, dat
   );
 }
 
+// ── Telegram секція ─────────────────────────────────────────
+function TelegramSection({ me, onMeChange }) {
+  const [linkCode, setLinkCode] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [unlinkLoading, setUnlinkLoading] = useState(false);
+
+  async function generateCode() {
+    setLoading(true);
+    try {
+      const { code } = await api.generateTelegramLink();
+      setLinkCode(code);
+    } catch {
+      alert("Помилка генерації коду");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function unlink() {
+    if (!confirm("Відключити Telegram від акаунту?")) return;
+    setUnlinkLoading(true);
+    try {
+      await api.unlinkTelegram();
+      onMeChange();
+      setLinkCode(null);
+    } finally {
+      setUnlinkLoading(false);
+    }
+  }
+
+  return (
+    <div className="bg-gray-700 rounded-lg p-3">
+      <div className="flex items-center justify-between mb-2">
+        <div className="text-xs text-gray-400 uppercase tracking-wider">Telegram</div>
+        <a
+          href="https://t.me/PrivatHomeBaseBot"
+          target="_blank"
+          rel="noreferrer"
+          className="text-xs text-blue-400 hover:underline"
+        >
+          @PrivatHomeBaseBot
+        </a>
+      </div>
+      {me?.telegramId ? (
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-2 text-sm">
+            <span className="w-2 h-2 rounded-full bg-green-400 flex-shrink-0" />
+            <span className="text-green-400 font-medium">Підключено</span>
+          </div>
+          <button
+            onClick={unlink}
+            disabled={unlinkLoading}
+            className="text-xs bg-red-800 hover:bg-red-700 py-1 rounded transition disabled:opacity-50"
+          >
+            {unlinkLoading ? "..." : "Відключити"}
+          </button>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-3 text-xs text-gray-400">
+          <div>
+            <div className="text-gray-300 mb-1 font-medium">Варіант A — через email:</div>
+            <div className="text-gray-400">Надішліть боту:</div>
+            <div className="font-mono text-blue-400 mt-0.5">/register ваш@email.com</div>
+            <div className="text-gray-500 mt-0.5">Отримаєте код на email → /confirm КОД</div>
+          </div>
+          <div className="border-t border-gray-600" />
+          <div>
+            <div className="text-gray-300 mb-1 font-medium">Варіант B — через сайт:</div>
+            {linkCode ? (
+              <div className="flex flex-col gap-1">
+                <div className="text-gray-400">Надішліть боту:</div>
+                <div className="bg-gray-800 rounded px-2 py-1.5 font-mono text-white text-center select-all mt-0.5">
+                  /link {linkCode}
+                </div>
+                <div className="text-gray-500 mt-0.5">Код дійсний 15 хвилин</div>
+                <button
+                  onClick={generateCode}
+                  disabled={loading}
+                  className="text-blue-400 hover:text-blue-300 mt-1 disabled:opacity-50"
+                >
+                  Оновити код
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={generateCode}
+                disabled={loading}
+                className="bg-blue-700 hover:bg-blue-600 text-white px-3 py-1 rounded transition disabled:opacity-50"
+              >
+                {loading ? "..." : "Згенерувати код"}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Панель Налаштування ────────────────────────────────────
-function SettingsPanel({ trackers, onTrackersChange, zones, onZonesChange, pickingZone, setPickingZone, pendingZoneCoord, clearPendingCoord, me }) {
+function SettingsPanel({ trackers, onTrackersChange, zones, onZonesChange, pickingZone, setPickingZone, pendingZoneCoord, clearPendingCoord, me, onMeChange }) {
   const [editId, setEditId] = useState(null);
   const [editForm, setEditForm] = useState({});
   const [addForm, setAddForm] = useState({ name: "", imei: "", color: "#3b82f6", active: true });
@@ -174,27 +273,7 @@ function SettingsPanel({ trackers, onTrackersChange, zones, onZonesChange, picki
       <h2 className="font-semibold text-white">Налаштування</h2>
 
       {/* Telegram */}
-      <div className="bg-gray-700 rounded-lg p-3">
-        <div className="text-xs text-gray-400 uppercase tracking-wider mb-2">Telegram</div>
-        {me?.telegramId ? (
-          <div className="flex items-center gap-2 text-sm">
-            <span className="w-2 h-2 rounded-full bg-green-400 flex-shrink-0" />
-            <span className="text-green-400 font-medium">Підключено</span>
-            <span className="text-gray-400 text-xs ml-auto font-mono">{me.telegramId}</span>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center gap-2 text-sm">
-              <span className="w-2 h-2 rounded-full bg-gray-500 flex-shrink-0" />
-              <span className="text-gray-400">Не підключено</span>
-            </div>
-            <div className="text-xs text-gray-500 mt-1">
-              Напишіть боту <span className="text-blue-400">@PrivatHomeBaseBot</span>:<br />
-              <span className="font-mono">/register ваш@email.com</span>
-            </div>
-          </div>
-        )}
-      </div>
+      <TelegramSection me={me} onMeChange={onMeChange} />
 
       {/* Трекери */}
       <div>
@@ -443,9 +522,13 @@ export default function MapPage() {
     api.getZones().then(setZones).catch(console.error);
   }
 
+  function loadMe() {
+    api.getMe().then(setMe).catch(console.error);
+  }
+
   useEffect(() => { loadTrackers(); }, []);
   useEffect(() => { loadZones(); }, []);
-  useEffect(() => { api.getMe().then(setMe).catch(console.error); }, []);
+  useEffect(() => { loadMe(); }, []);
 
   useEffect(() => {
     api.getLatest().then((data) => {
@@ -553,6 +636,7 @@ export default function MapPage() {
               pendingZoneCoord={pendingZoneCoord}
               clearPendingCoord={() => setPendingZoneCoord(null)}
               me={me}
+              onMeChange={loadMe}
             />
           )}
         </div>

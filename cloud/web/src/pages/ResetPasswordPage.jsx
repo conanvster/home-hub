@@ -32,8 +32,10 @@ export default function ResetPasswordPage() {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
         <div className="bg-gray-800 p-8 rounded-xl w-full max-w-sm text-center">
-          <p className="text-red-400">Недійсне посилання для скидання паролю.</p>
-          <a href="/forgot-password" className="mt-4 inline-block text-blue-400 hover:underline">Запросити нове</a>
+          <h1 className="text-white text-2xl font-bold">🏠 Home Hub</h1>
+          <p className="text-gray-500 text-sm mb-4">Новий пароль</p>
+          <p className="text-red-400 text-sm">Недійсне посилання для скидання паролю.</p>
+          <a href="/forgot-password" className="mt-4 inline-block text-blue-400 hover:underline text-sm">Запросити нове</a>
         </div>
       </div>
     );
@@ -42,7 +44,8 @@ export default function ResetPasswordPage() {
   return (
     <div className="min-h-screen bg-gray-900 flex items-center justify-center">
       <div className="bg-gray-800 p-8 rounded-xl w-full max-w-sm">
-        <h1 className="text-white text-2xl font-bold mb-6 text-center">Новий пароль</h1>
+        <h1 className="text-white text-2xl font-bold text-center">🏠 Home Hub</h1>
+        <p className="text-gray-500 text-sm text-center mb-6">Новий пароль</p>
         {done ? (
           <p className="text-green-400 text-center">Пароль змінено. Перенаправлення...</p>
         ) : (

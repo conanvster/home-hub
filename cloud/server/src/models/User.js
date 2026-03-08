@@ -9,6 +9,9 @@ const userSchema = new mongoose.Schema(
     telegramId: { type: String, default: null },
     resetToken: { type: String, default: null },
     resetTokenExpires: { type: Date, default: null },
+    telegramLinkCode: { type: String, default: null },
+    telegramLinkCodeExpires: { type: Date, default: null },
+    telegramLinkChatId: { type: String, default: null },
   },
   { timestamps: true }
 );

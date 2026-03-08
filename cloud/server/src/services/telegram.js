@@ -1,5 +1,6 @@
 const TelegramBot = require("node-telegram-bot-api");
 const User = require("../models/User");
+const { sendTelegramCode } = require("./email");
 const Tracker = require("../models/Tracker");
 const Log = require("../models/Log");
 const ZoneState = require("../models/ZoneState");
@@ -59,15 +60,19 @@ function init() {
   bot.onText(/\/start|\/help/, (msg) => {
     bot.sendMessage(msg.chat.id,
       "🏠 *Home Hub Bot*\n\n" +
-      "Команди:\n" +
-      "/register `email` — прив'язати Telegram до акаунту\n" +
+      "Команди прив'язки:\n" +
+      "/register `email` — надіслати код на email\n" +
+      "/confirm `код` — підтвердити код з email\n" +
+      "/link `код` — прив'язати кодом з сайту\n" +
+      "/unlink — відключити Telegram від акаунту\n\n" +
+      "Інше:\n" +
       "/where — остання позиція трекера\n" +
       "/help — ця довідка",
       { parse_mode: "Markdown" }
     );
   });
 
-  // /register email
+  // /register email — Варіант B: надіслати 6-значний код на email
   bot.onText(/\/register (.+)/, async (msg, match) => {
     const chatId = msg.chat.id;
     const email = match[1].trim().toLowerCase();
@@ -75,9 +80,68 @@ function init() {
     if (!user) {
       return bot.sendMessage(chatId, "❌ Користувача не знайдено.");
     }
-    user.telegramId = String(chatId);
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    user.telegramLinkCode = code;
+    user.telegramLinkCodeExpires = new Date(Date.now() + 15 * 60 * 1000);
+    user.telegramLinkChatId = String(chatId);
     await user.save();
-    bot.sendMessage(chatId, `✅ Акаунт *${email}* прив'язано до Telegram.`, { parse_mode: "Markdown" });
+    try {
+      await sendTelegramCode(email, code);
+      bot.sendMessage(chatId, `📧 Код надіслано на *${email}*\\.\nВведіть: /confirm КОД`, { parse_mode: "Markdown" });
+    } catch {
+      bot.sendMessage(chatId, "❌ Не вдалося надіслати email. Спробуйте пізніше.");
+    }
+  });
+
+  // /confirm CODE — підтвердити код з email
+  bot.onText(/\/confirm (.+)/, async (msg, match) => {
+    const chatId = msg.chat.id;
+    const code = match[1].trim();
+    const user = await User.findOne({
+      telegramLinkCode: code,
+      telegramLinkChatId: String(chatId),
+      telegramLinkCodeExpires: { $gt: new Date() },
+    });
+    if (!user) {
+      return bot.sendMessage(chatId, "❌ Невірний або прострочений код.");
+    }
+    user.telegramId = String(chatId);
+    user.telegramLinkCode = null;
+    user.telegramLinkCodeExpires = null;
+    user.telegramLinkChatId = null;
+    await user.save();
+    bot.sendMessage(chatId, `✅ Telegram прив'язано до акаунту *${user.email}*`, { parse_mode: "Markdown" });
+  });
+
+  // /link CODE — Варіант C: прив'язати кодом з сайту
+  bot.onText(/\/link (.+)/, async (msg, match) => {
+    const chatId = msg.chat.id;
+    const code = match[1].trim();
+    const user = await User.findOne({
+      telegramLinkCode: code,
+      telegramLinkCodeExpires: { $gt: new Date() },
+    });
+    if (!user) {
+      return bot.sendMessage(chatId, "❌ Невірний або прострочений код.");
+    }
+    user.telegramId = String(chatId);
+    user.telegramLinkCode = null;
+    user.telegramLinkCodeExpires = null;
+    user.telegramLinkChatId = null;
+    await user.save();
+    bot.sendMessage(chatId, `✅ Telegram прив'язано до акаунту *${user.email}*`, { parse_mode: "Markdown" });
+  });
+
+  // /unlink — відключити Telegram від акаунту
+  bot.onText(/\/unlink/, async (msg) => {
+    const chatId = msg.chat.id;
+    const user = await User.findOne({ telegramId: String(chatId) });
+    if (!user) {
+      return bot.sendMessage(chatId, "❌ Telegram не прив'язано до жодного акаунту.");
+    }
+    user.telegramId = null;
+    await user.save();
+    bot.sendMessage(chatId, "✅ Telegram відключено від акаунту.");
   });
 
   // /where — вибір трекера

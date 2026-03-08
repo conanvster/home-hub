@@ -28,6 +28,17 @@ async function sendMail(to, subject, html) {
   });
 }
 
+async function sendTelegramCode(to, code) {
+  await sendMail(
+    to,
+    "Прив'язка Telegram — Home Hub",
+    `<p>Для прив'язки Telegram надішліть боту команду:</p>
+     <p><strong>/confirm ${code}</strong></p>
+     <p>Код дійсний 15 хвилин.</p>
+     <p>Якщо ви не запитували прив'язку — проігноруйте цей лист.</p>`
+  );
+}
+
 async function sendPasswordReset(to, token) {
   const url = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
   await sendMail(
@@ -40,4 +51,4 @@ async function sendPasswordReset(to, token) {
   );
 }
 
-module.exports = { sendPasswordReset };
+module.exports = { sendPasswordReset, sendTelegramCode };

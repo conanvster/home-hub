@@ -62,6 +62,12 @@ export const api = {
 
   getMe: () => request("/auth/me"),
 
+  generateTelegramLink: () =>
+    request("/auth/telegram-link", { method: "POST" }),
+
+  unlinkTelegram: () =>
+    request("/auth/telegram-link", { method: "DELETE" }),
+
   getZones: () => request("/zones"),
 
   createZone: (data) =>
