@@ -3,7 +3,7 @@ const ZoneState = require("../models/ZoneState");
 const ZoneEvent = require("../models/ZoneEvent");
 const Tracker = require("../models/Tracker");
 const User = require("../models/User");
-const { sendMsg, mapsLink } = require("./telegram");
+const { queueMsg, mapsLink } = require("./telegram");
 
 // Haversine — відстань між двома точками в метрах
 function distanceMeters(lat1, lng1, lat2, lng2) {
@@ -69,9 +69,10 @@ async function checkZones(log) {
         const emoji = isNowInside ? "🟢" : "🔴";
         const action = isNowInside ? "в'їхав у зону" : "виїхав із зони";
         const link = mapsLink(log.latitude, log.longitude);
-        sendMsg(user.telegramId,
+        queueMsg(user.telegramId,
           `${emoji} *${tracker.name}* ${action} *${zone.name}*\n` +
-          `[📍 Google Maps](${link})`
+          `[📍 Google Maps](${link})`,
+          { type: "geofence", imei: tracker.imei, zone: zone.name, event }
         );
       }
     }

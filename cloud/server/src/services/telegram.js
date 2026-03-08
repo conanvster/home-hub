@@ -1,12 +1,13 @@
 const TelegramBot = require("node-telegram-bot-api");
 const User = require("../models/User");
-const { sendTelegramCode } = require("./email");
 const Tracker = require("../models/Tracker");
 const Log = require("../models/Log");
 const ZoneState = require("../models/ZoneState");
 const Zone = require("../models/Zone");
+const TelegramMessage = require("../models/TelegramMessage");
 
 let bot = null;
+let processingQueue = false;
 
 function mapsLink(lat, lng) {
   return `https://maps.google.com/?q=${lat},${lng}`;
@@ -20,6 +21,69 @@ async function getAddress(lat, lng) {
     return data.display_name || null;
   } catch {
     return null;
+  }
+}
+
+// Зберегти вхідне повідомлення
+async function saveIncoming(chatId, text, metadata = {}) {
+  try {
+    await TelegramMessage.create({
+      direction: "in",
+      telegramId: String(chatId),
+      text,
+      metadata,
+      status: "received",
+      processedAt: new Date(),
+    });
+  } catch (err) {
+    console.error("[Telegram] saveIncoming error:", err.message);
+  }
+}
+
+// Поставити вихідне повідомлення в чергу
+async function queueMsg(telegramId, text, metadata = {}) {
+  if (!telegramId) return;
+  try {
+    await TelegramMessage.create({
+      direction: "out",
+      telegramId: String(telegramId),
+      text,
+      metadata,
+      status: "pending",
+    });
+  } catch (err) {
+    console.error("[Telegram] queueMsg error:", err.message);
+  }
+}
+
+// Обробник черги — запускається кожні 5 секунд
+async function processQueue() {
+  if (!bot || processingQueue) return;
+  processingQueue = true;
+  try {
+    const pending = await TelegramMessage.find({
+      direction: "out",
+      status: "pending",
+    })
+      .sort({ createdAt: 1 })
+      .limit(10);
+
+    for (const msg of pending) {
+      try {
+        await bot.sendMessage(msg.telegramId, msg.text, { parse_mode: "Markdown" });
+        msg.status = "sent";
+        msg.processedAt = new Date();
+        msg.error = null;
+      } catch (err) {
+        msg.status = "failed";
+        msg.error = err.message;
+        msg.processedAt = new Date();
+        console.error(`[Telegram] Failed to send to ${msg.telegramId}:`, err.message);
+      }
+      await msg.save();
+    }
+  } finally {
+    processingQueue = false;
   }
 }
 
@@ -54,11 +118,16 @@ function init() {
 
   // Стартуємо через 5с після ініціалізації
   setTimeout(startPolling, 5000);
+
+  // Запускаємо обробник черги кожні 5 секунд
+  setInterval(processQueue, 5000);
+
   console.log("[Telegram] Bot initialized");
 
   // /start, /help
-  bot.onText(/\/start|\/help/, (msg) => {
-    bot.sendMessage(msg.chat.id,
+  bot.onText(/\/start|\/help/, async (msg) => {
+    await saveIncoming(msg.chat.id, msg.text, { command: "help" });
+    await queueMsg(msg.chat.id,
       "🏠 *Home Hub Bot*\n\n" +
       "Команди прив'язки:\n" +
       "/register `email` — надіслати код на email\n" +
@@ -68,7 +137,7 @@ function init() {
       "Інше:\n" +
       "/where — остання позиція трекера\n" +
       "/help — ця довідка",
-      { parse_mode: "Markdown" }
+      { command: "help" }
     );
   });
 
@@ -76,10 +145,13 @@ function init() {
   bot.onText(/\/register (.+)/, async (msg, match) => {
     const chatId = msg.chat.id;
     const email = match[1].trim().toLowerCase();
+    await saveIncoming(chatId, msg.text, { command: "register", email });
+
     const user = await User.findOne({ email });
     if (!user) {
-      return bot.sendMessage(chatId, "❌ Користувача не знайдено.");
+      return queueMsg(chatId, "❌ Користувача не знайдено.", { command: "register" });
     }
+    const { sendTelegramCode } = require("./email");
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     user.telegramLinkCode = code;
     user.telegramLinkCodeExpires = new Date(Date.now() + 15 * 60 * 1000);
@@ -87,73 +159,84 @@ function init() {
     await user.save();
     try {
       await sendTelegramCode(email, code);
-      bot.sendMessage(chatId, `📧 Код надіслано на *${email}*\\.\nВведіть: /confirm КОД`, { parse_mode: "Markdown" });
+      await queueMsg(chatId,
+        `📧 Код надіслано на *${email}*\\.\nВведіть: /confirm КОД`,
+        { command: "register", email }
+      );
     } catch {
-      bot.sendMessage(chatId, "❌ Не вдалося надіслати email. Спробуйте пізніше.");
+      await queueMsg(chatId, "❌ Не вдалося надіслати email. Спробуйте пізніше.", { command: "register" });
     }
   });
 
-  // /confirm CODE — підтвердити код з email
+  // /confirm CODE
   bot.onText(/\/confirm (.+)/, async (msg, match) => {
     const chatId = msg.chat.id;
     const code = match[1].trim();
+    await saveIncoming(chatId, msg.text, { command: "confirm" });
+
     const user = await User.findOne({
       telegramLinkCode: code,
       telegramLinkChatId: String(chatId),
       telegramLinkCodeExpires: { $gt: new Date() },
     });
     if (!user) {
-      return bot.sendMessage(chatId, "❌ Невірний або прострочений код.");
+      return queueMsg(chatId, "❌ Невірний або прострочений код.", { command: "confirm" });
     }
     user.telegramId = String(chatId);
     user.telegramLinkCode = null;
     user.telegramLinkCodeExpires = null;
     user.telegramLinkChatId = null;
     await user.save();
-    bot.sendMessage(chatId, `✅ Telegram прив'язано до акаунту *${user.email}*`, { parse_mode: "Markdown" });
+    await queueMsg(chatId, `✅ Telegram прив'язано до акаунту *${user.email}*`, { command: "confirm" });
   });
 
   // /link CODE — Варіант C: прив'язати кодом з сайту
   bot.onText(/\/link (.+)/, async (msg, match) => {
     const chatId = msg.chat.id;
     const code = match[1].trim();
+    await saveIncoming(chatId, msg.text, { command: "link" });
+
     const user = await User.findOne({
       telegramLinkCode: code,
       telegramLinkCodeExpires: { $gt: new Date() },
     });
     if (!user) {
-      return bot.sendMessage(chatId, "❌ Невірний або прострочений код.");
+      return queueMsg(chatId, "❌ Невірний або прострочений код.", { command: "link" });
     }
     user.telegramId = String(chatId);
     user.telegramLinkCode = null;
     user.telegramLinkCodeExpires = null;
     user.telegramLinkChatId = null;
     await user.save();
-    bot.sendMessage(chatId, `✅ Telegram прив'язано до акаунту *${user.email}*`, { parse_mode: "Markdown" });
+    await queueMsg(chatId, `✅ Telegram прив'язано до акаунту *${user.email}*`, { command: "link" });
   });
 
-  // /unlink — відключити Telegram від акаунту
+  // /unlink
   bot.onText(/\/unlink/, async (msg) => {
     const chatId = msg.chat.id;
+    await saveIncoming(chatId, msg.text, { command: "unlink" });
+
     const user = await User.findOne({ telegramId: String(chatId) });
     if (!user) {
-      return bot.sendMessage(chatId, "❌ Telegram не прив'язано до жодного акаунту.");
+      return queueMsg(chatId, "❌ Telegram не прив'язано до жодного акаунту.", { command: "unlink" });
     }
     user.telegramId = null;
     await user.save();
-    bot.sendMessage(chatId, "✅ Telegram відключено від акаунту.");
+    await queueMsg(chatId, "✅ Telegram відключено від акаунту.", { command: "unlink" });
   });
 
   // /where — вибір трекера
   bot.onText(/\/where/, async (msg) => {
     const chatId = msg.chat.id;
+    await saveIncoming(chatId, msg.text, { command: "where" });
+
     const user = await User.findOne({ telegramId: String(chatId) });
     if (!user) {
-      return bot.sendMessage(chatId, "❌ Спочатку зареєструйтесь: /register email");
+      return queueMsg(chatId, "❌ Спочатку зареєструйтесь: /register email", { command: "where" });
     }
     const trackers = await Tracker.find({ userId: user._id, active: true });
     if (!trackers.length) {
-      return bot.sendMessage(chatId, "Трекерів не знайдено.");
+      return queueMsg(chatId, "Трекерів не знайдено.", { command: "where" });
     }
     bot.sendMessage(chatId, "Оберіть трекер:", {
       reply_markup: {
@@ -170,13 +253,17 @@ function init() {
     const chatId = query.from.id;
     if (!query.data.startsWith("where_")) return;
     const trackerId = query.data.replace("where_", "");
+
+    await saveIncoming(chatId, `/where callback:${trackerId}`, { command: "where_callback", trackerId });
+
     const tracker = await Tracker.findById(trackerId);
-    if (!tracker) return bot.sendMessage(chatId, "Трекер не знайдено.");
+    if (!tracker) return queueMsg(chatId, "Трекер не знайдено.", { command: "where_callback" });
+
     const log = await Log.findOne({ imei: tracker.imei }).sort({ deviceTime: -1 });
-    if (!log) return bot.sendMessage(chatId, "Немає даних для цього трекера.");
+    if (!log) return queueMsg(chatId, "Немає даних для цього трекера.", { command: "where_callback" });
+
     const link = mapsLink(log.latitude, log.longitude);
 
-    // Перевіряємо чи трекер у зоні
     const activeZoneState = await ZoneState.findOne({ imei: tracker.imei, isInside: true });
     let locationLine;
     if (activeZoneState) {
@@ -187,24 +274,17 @@ function init() {
       locationLine = address ? `Адреса: ${address}` : "";
     }
 
-    bot.sendMessage(chatId,
+    await queueMsg(chatId,
       `📍 *${tracker.name}*\n` +
       `Швидкість: ${log.speed.toFixed(0)} км/г\n` +
       `Час: ${new Date(log.deviceTime).toLocaleString("uk")}\n` +
       (locationLine ? `${locationLine}\n` : "") +
       `\n[Відкрити на Google Maps](${link})`,
-      { parse_mode: "Markdown" }
+      { command: "where_callback", imei: tracker.imei }
     );
   });
 
   bot.on("polling_error", (err) => console.error("[Telegram] polling error:", err.message));
 }
 
-function sendMsg(telegramId, text) {
-  if (!bot || !telegramId) return;
-  bot.sendMessage(telegramId, text, { parse_mode: "Markdown" }).catch((err) => {
-    console.error("[Telegram] sendMsg error:", err.message);
-  });
-}
-
-module.exports = { init, sendMsg, mapsLink };
+module.exports = { init, queueMsg, mapsLink };
