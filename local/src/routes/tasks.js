@@ -51,10 +51,10 @@ router.post("/", async (req, res) => {
 });
 
 router.patch("/:id", async (req, res) => {
-  const { title, description, category, priority, column, order } = req.body;
+  const { title, description, category, priority, column, order, linkedTasks } = req.body;
   const task = await Task.findByIdAndUpdate(
     req.params.id,
-    { $set: { title, description, category, priority, column, order } },
+    { $set: { title, description, category, priority, column, order, linkedTasks } },
     { new: true, runValidators: true }
   );
   if (!task) return res.status(404).json({ error: "Not found" });
@@ -64,6 +64,29 @@ router.patch("/:id", async (req, res) => {
 router.delete("/:id", async (req, res) => {
   await Task.findByIdAndDelete(req.params.id);
   res.json({ ok: true });
+});
+
+// ── Коментарі ─────────────────────────────────────────────────
+router.post("/:id/comments", async (req, res) => {
+  const text = req.body.text?.trim();
+  if (!text) return res.status(400).json({ error: "text required" });
+  const task = await Task.findByIdAndUpdate(
+    req.params.id,
+    { $push: { comments: { text } } },
+    { new: true }
+  );
+  if (!task) return res.status(404).json({ error: "Not found" });
+  res.json(task);
+});
+
+router.delete("/:id/comments/:commentId", async (req, res) => {
+  const task = await Task.findByIdAndUpdate(
+    req.params.id,
+    { $pull: { comments: { _id: req.params.commentId } } },
+    { new: true }
+  );
+  if (!task) return res.status(404).json({ error: "Not found" });
+  res.json(task);
 });
 
 module.exports = router;

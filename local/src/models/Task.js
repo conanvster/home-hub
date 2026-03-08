@@ -16,6 +16,13 @@ const taskSchema = new mongoose.Schema(
       default: "idea",
     },
     order: { type: Number, default: 0 },
+    linkedTasks: [{ type: mongoose.Schema.Types.ObjectId, ref: "Task" }],
+    comments: [
+      {
+        text: { type: String, required: true },
+        createdAt: { type: Date, default: Date.now },
+      },
+    ],
   },
   { timestamps: true }
 );

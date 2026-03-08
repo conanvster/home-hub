@@ -99,6 +99,10 @@ export const api = {
   createTask: (data) => request("/tasks", { method: "POST", body: JSON.stringify(data) }),
   updateTask: (id, data) => request(`/tasks/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   deleteTask: (id) => request(`/tasks/${id}`, { method: "DELETE" }),
+  addComment: (taskId, text) =>
+    request(`/tasks/${taskId}/comments`, { method: "POST", body: JSON.stringify({ text }) }),
+  deleteComment: (taskId, commentId) =>
+    request(`/tasks/${taskId}/comments/${commentId}`, { method: "DELETE" }),
   getCategories: () => request("/tasks/categories"),
   addCategory: (name) => request("/tasks/categories", { method: "POST", body: JSON.stringify({ name }) }),
   deleteCategory: (name) => request(`/tasks/categories/${encodeURIComponent(name)}`, { method: "DELETE" }),

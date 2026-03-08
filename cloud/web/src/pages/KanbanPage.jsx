@@ -116,15 +116,20 @@ function CategoriesModal({ categories, onAdd, onDelete, onClose }) {
 }
 
 // ── Модальне вікно задачі ──────────────────────────────────────
-function TaskModal({ task, categories, onSave, onDelete, onClose }) {
+function TaskModal({ task, categories, allTasks, onSave, onDelete, onClose, onOpenTask }) {
   const isNew = !task._id;
+
   const [form, setForm] = useState({
     title: task.title || "",
     description: task.description || "",
     category: task.category || categories[0] || "інше",
     priority: task.priority || "medium",
     column: task.column || "idea",
+    linkedTasks: (task.linkedTasks || []).map((id) => String(id)),
   });
+  const [comments, setComments] = useState(task.comments || []);
+  const [commentInput, setCommentInput] = useState("");
+  const [addingComment, setAddingComment] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -137,32 +142,76 @@ function TaskModal({ task, categories, onSave, onDelete, onClose }) {
   }
 
   async function handleDelete() {
-    if (!confirm(`Видалити "${task.title}"?`)) return;
+    if (!confirm(`Видалити "${task.title || form.title}"?`)) return;
     setDeleting(true);
     try { await onDelete(task._id); } finally { setDeleting(false); }
   }
 
+  // ── Лінки ────────────────────────────────────────────────────
+  const linkedTaskObjects = form.linkedTasks
+    .map((id) => allTasks.find((t) => String(t._id) === id))
+    .filter(Boolean);
+
+  const availableToLink = allTasks.filter(
+    (t) => t._id !== task._id && !form.linkedTasks.includes(String(t._id))
+  );
+
+  function addLink(id) {
+    if (!id) return;
+    set("linkedTasks", [...form.linkedTasks, id]);
+  }
+
+  function removeLink(id) {
+    set("linkedTasks", form.linkedTasks.filter((x) => x !== id));
+  }
+
+  // ── Коментарі ─────────────────────────────────────────────────
+  async function handleAddComment() {
+    const text = commentInput.trim();
+    if (!text || !task._id) return;
+    setAddingComment(true);
+    try {
+      const updated = await api.addComment(task._id, text);
+      setComments(updated.comments);
+      setCommentInput("");
+    } finally {
+      setAddingComment(false);
+    }
+  }
+
+  async function handleDeleteComment(commentId) {
+    const updated = await api.deleteComment(task._id, commentId);
+    setComments(updated.comments);
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
-      <div className="bg-gray-800 rounded-xl w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-700">
-          <h2 className="text-white font-semibold">{isNew ? "Нова задача" : "Редагувати"}</h2>
+      <div
+        className="bg-gray-800 rounded-xl w-full max-w-xl shadow-2xl flex flex-col max-h-[92vh]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Заголовок */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-700 flex-shrink-0">
+          <h2 className="text-white font-semibold">{isNew ? "Нова задача" : "Редагувати задачу"}</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-white text-lg leading-none">✕</button>
         </div>
 
-        <div className="p-5 flex flex-col gap-4">
+        {/* Контент — скролиться */}
+        <div className="overflow-y-auto flex-1 p-5 flex flex-col gap-5">
+
+          {/* Назва */}
           <div>
             <label className="text-gray-400 text-xs mb-1 block">Назва *</label>
             <input
               autoFocus
               value={form.title}
               onChange={(e) => set("title", e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") handleSave(); }}
               className="w-full bg-gray-700 text-white rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-blue-500"
               placeholder="Що потрібно зробити?"
             />
           </div>
 
+          {/* Опис */}
           <div>
             <label className="text-gray-400 text-xs mb-1 block">Опис</label>
             <textarea
@@ -174,6 +223,7 @@ function TaskModal({ task, categories, onSave, onDelete, onClose }) {
             />
           </div>
 
+          {/* Пріоритет + Категорія */}
           <div className="flex gap-3">
             <div className="flex-1">
               <label className="text-gray-400 text-xs mb-1 block">Пріоритет</label>
@@ -201,6 +251,7 @@ function TaskModal({ task, categories, onSave, onDelete, onClose }) {
             </div>
           </div>
 
+          {/* Статус */}
           <div>
             <label className="text-gray-400 text-xs mb-1 block">Статус</label>
             <select
@@ -213,9 +264,107 @@ function TaskModal({ task, categories, onSave, onDelete, onClose }) {
               ))}
             </select>
           </div>
+
+          {/* ── Пов'язані задачі ─────────────────────────────── */}
+          <div className="border-t border-gray-700 pt-4">
+            <label className="text-gray-400 text-xs mb-2 block">Пов'язані задачі</label>
+
+            {/* Список лінків */}
+            {linkedTaskObjects.length > 0 && (
+              <div className="flex flex-col gap-1.5 mb-2">
+                {linkedTaskObjects.map((t) => {
+                  const col = COLUMNS.find((c) => c.id === t.column);
+                  return (
+                    <div key={t._id} className="flex items-center gap-2 bg-gray-700/50 rounded-lg px-3 py-1.5">
+                      <button
+                        onClick={() => onOpenTask(t)}
+                        className="flex-1 flex items-center gap-2 text-left hover:text-blue-300 transition"
+                      >
+                        <span className="text-white text-sm truncate">{t.title}</span>
+                        <span className="text-gray-400 text-xs whitespace-nowrap">{col?.label}</span>
+                      </button>
+                      <button
+                        onClick={() => removeLink(String(t._id))}
+                        className="text-gray-500 hover:text-red-400 text-sm flex-shrink-0"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Додати лінк */}
+            {availableToLink.length > 0 && (
+              <select
+                defaultValue=""
+                onChange={(e) => { addLink(e.target.value); e.target.value = ""; }}
+                className="w-full bg-gray-700 text-white rounded-lg px-3 py-2 text-sm outline-none"
+              >
+                <option value="" disabled>+ Додати пов'язану задачу...</option>
+                {availableToLink.map((t) => {
+                  const col = COLUMNS.find((c) => c.id === t.column);
+                  return (
+                    <option key={t._id} value={String(t._id)}>
+                      {t.title} ({col?.label || t.column})
+                    </option>
+                  );
+                })}
+              </select>
+            )}
+          </div>
+
+          {/* ── Коментарі ────────────────────────────────────── */}
+          {!isNew && (
+            <div className="border-t border-gray-700 pt-4">
+              <label className="text-gray-400 text-xs mb-2 block">
+                Коментарі {comments.length > 0 && `(${comments.length})`}
+              </label>
+
+              {comments.length > 0 && (
+                <div className="flex flex-col gap-2 mb-3">
+                  {comments.map((c) => (
+                    <div key={c._id} className="bg-gray-700/50 rounded-lg px-3 py-2 flex gap-2">
+                      <div className="flex-1">
+                        <p className="text-white text-sm">{c.text}</p>
+                        <p className="text-gray-500 text-xs mt-0.5">
+                          {new Date(c.createdAt).toLocaleString("uk-UA")}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => handleDeleteComment(c._id)}
+                        className="text-gray-600 hover:text-red-400 text-sm flex-shrink-0 self-start"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="flex gap-2">
+                <input
+                  value={commentInput}
+                  onChange={(e) => setCommentInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleAddComment(); } }}
+                  placeholder="Додати коментар..."
+                  className="flex-1 bg-gray-700 text-white rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-blue-500"
+                />
+                <button
+                  onClick={handleAddComment}
+                  disabled={addingComment || !commentInput.trim()}
+                  className="px-3 py-2 text-sm bg-gray-600 hover:bg-gray-500 text-white rounded-lg disabled:opacity-50 transition"
+                >
+                  →
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
-        <div className="flex items-center justify-between px-5 py-4 border-t border-gray-700">
+        {/* Футер */}
+        <div className="flex items-center justify-between px-5 py-4 border-t border-gray-700 flex-shrink-0">
           {!isNew ? (
             <button
               onClick={handleDelete}
@@ -451,9 +600,11 @@ export default function KanbanPage() {
         <TaskModal
           task={modal.task}
           categories={categories}
+          allTasks={tasks}
           onSave={handleSave}
           onDelete={handleDelete}
           onClose={() => setModal(null)}
+          onOpenTask={(t) => setModal({ task: t })}
         />
       )}
 
