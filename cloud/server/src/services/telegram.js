@@ -136,6 +136,7 @@ function init() {
       "/unlink — відключити Telegram від акаунту\n\n" +
       "Інше:\n" +
       "/where — остання позиція трекера\n" +
+      "/version — версія сервера\n" +
       "/help — ця довідка",
       { command: "help" }
     );
@@ -282,6 +283,14 @@ function init() {
       `\n[Відкрити на Google Maps](${link})`,
       { command: "where_callback", imei: tracker.imei }
     );
+  });
+
+  // /version
+  bot.onText(/\/version/, async (msg) => {
+    const chatId = msg.chat.id;
+    await saveIncoming(chatId, msg.text, { command: "version" });
+    const version = `cloud@${process.env.GIT_COMMIT || "unknown"}`;
+    await queueMsg(chatId, `🏠 Home Hub Server\nВерсія: \`${version}\``, { command: "version" });
   });
 
   bot.on("polling_error", (err) => console.error("[Telegram] polling error:", err.message));

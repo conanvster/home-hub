@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { api } from "../services/api";
 import { useAuthStore } from "../store/useAuthStore";
+import { VERSION } from "../config";
 
 // ── Вкладка: Користувачі ──────────────────────────────────────
 function UsersTab() {
@@ -359,6 +360,7 @@ export default function AdminPage() {
             Адмін
           </span>
         </nav>
+        <span className="text-gray-600 text-xs font-mono mx-3 whitespace-nowrap hidden sm:inline">{VERSION}</span>
         <button
           onClick={logout}
           className="text-gray-400 hover:text-white text-sm px-3 transition whitespace-nowrap"

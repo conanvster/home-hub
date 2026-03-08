@@ -21,8 +21,10 @@ echo "✅ Файли синхронізовано"
 
 echo ""
 echo "━━━ 🐳 Rebuild + restart на сервері ━━━"
+GIT_COMMIT=$(git -C "$ROOT" rev-parse --short HEAD)
+echo "Git commit: $GIT_COMMIT"
 ssh -i "$SSH_KEY" "$SERVER" \
-  "cd $SERVER_PATH && $DOCKER_COMPOSE up -d --build server web"
+  "cd $SERVER_PATH && GIT_COMMIT=$GIT_COMMIT $DOCKER_COMPOSE up -d --build server web"
 echo "✅ Контейнери перезапущено"
 
 echo ""

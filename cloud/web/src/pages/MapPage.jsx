@@ -4,7 +4,7 @@ import { MapContainer, TileLayer, Marker, Polyline, Popup, Circle, useMap, useMa
 import { io } from "socket.io-client";
 import { api } from "../services/api";
 import { useAuthStore } from "../store/useAuthStore";
-import { IS_LOCAL } from "../config";
+import { IS_LOCAL, VERSION } from "../config";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 
@@ -62,6 +62,7 @@ function AppHeader({ activeTab, onTabChange, isAdmin, logout }) {
           </a>
         )}
       </nav>
+      <span className="text-gray-600 text-xs font-mono mx-3 whitespace-nowrap hidden sm:inline">{VERSION}</span>
       {!IS_LOCAL && (
         <button
           onClick={logout}

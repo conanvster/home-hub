@@ -5,7 +5,8 @@ COPY package*.json ./
 RUN npm install
 COPY . .
 ARG VITE_MODE=cloud
-RUN VITE_MODE=$VITE_MODE npm run build
+ARG VITE_GIT_COMMIT=unknown
+RUN VITE_MODE=$VITE_MODE VITE_GIT_COMMIT=$VITE_GIT_COMMIT npm run build
 
 # Serve stage
 FROM nginx:alpine

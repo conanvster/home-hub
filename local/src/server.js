@@ -21,6 +21,9 @@ app.use("/api/push", require("./routes/push"));
 
 const PORT = process.env.PORT || 3002;
 const SYNC_CRON = process.env.SYNC_CRON || "0 * * * *";
+const VERSION = `local@${process.env.GIT_COMMIT || "unknown"}`;
+
+app.get("/api/version", (req, res) => res.json({ version: VERSION }));
 
 async function main() {
   await connect();

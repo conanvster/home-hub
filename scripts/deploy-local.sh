@@ -16,7 +16,9 @@ echo "✅ Код оновлено"
 
 echo ""
 echo "━━━ 🐳 Rebuild + restart ━━━"
-ssh "$HOME_SERVER" "cd $SERVER_PATH/local && docker compose up -d --build server web"
+GIT_COMMIT=$(git -C "$ROOT" rev-parse --short HEAD)
+echo "Git commit: $GIT_COMMIT"
+ssh "$HOME_SERVER" "cd $SERVER_PATH/local && GIT_COMMIT=$GIT_COMMIT docker compose up -d --build server web"
 echo "✅ Контейнер перезапущено"
 
 echo ""

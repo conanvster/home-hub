@@ -60,6 +60,12 @@ app.get("/api/health", (req, res) => {
   res.json({ status: "ok", uptime: process.uptime() });
 });
 
+// Version
+const VERSION = `cloud@${process.env.GIT_COMMIT || "unknown"}`;
+app.get("/api/version", (req, res) => {
+  res.json({ version: VERSION });
+});
+
 // Start
 connectMongo().then(() => {
   httpServer.listen(PORT, () => {
