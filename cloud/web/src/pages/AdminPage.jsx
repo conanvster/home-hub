@@ -346,6 +346,7 @@ export default function AdminPage() {
         <nav className="flex flex-1 h-full">
           {[
             { label: "Трекінг", href: "/" },
+            { label: "Канбан", href: "/kanban" },
             { label: "Налаштування", href: "/?tab=settings" },
           ].map((item) => (
             <a

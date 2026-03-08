@@ -94,6 +94,12 @@ export const api = {
   adminRestore: (backup) =>
     request("/admin/restore", { method: "POST", body: JSON.stringify(backup) }),
 
+  // Tasks (Kanban)
+  getTasks: () => request("/tasks"),
+  createTask: (data) => request("/tasks", { method: "POST", body: JSON.stringify(data) }),
+  updateTask: (id, data) => request(`/tasks/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  deleteTask: (id) => request(`/tasks/${id}`, { method: "DELETE" }),
+
   // Local sync trigger
   triggerSync: () => request("/sync/trigger", { method: "POST" }),
 

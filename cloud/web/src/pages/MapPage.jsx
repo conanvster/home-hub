@@ -53,6 +53,14 @@ function AppHeader({ activeTab, onTabChange, isAdmin, logout }) {
             {tab.label}
           </button>
         ))}
+        {!IS_LOCAL && (
+          <a
+            href="/kanban"
+            className="px-4 h-full text-sm border-b-2 border-transparent text-gray-400 hover:text-white flex items-center"
+          >
+            Канбан
+          </a>
+        )}
         {!IS_LOCAL && isAdmin && (
           <a
             href="/admin"

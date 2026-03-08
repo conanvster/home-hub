@@ -6,6 +6,7 @@ import ResetPasswordPage from "./pages/ResetPasswordPage";
 import MapPage from "./pages/MapPage";
 import SyncStatusPage from "./pages/SyncStatusPage";
 import AdminPage from "./pages/AdminPage";
+import KanbanPage from "./pages/KanbanPage";
 import { useAuthStore } from "./store/useAuthStore";
 import { IS_LOCAL } from "./config";
 
@@ -38,14 +39,24 @@ export default function App() {
         <Route path="/sync" element={<Navigate to="/?tab=admin" replace />} />
       )}
       {!IS_LOCAL && (
-        <Route
-          path="/admin"
-          element={
-            <PrivateRoute>
-              <AdminPage />
-            </PrivateRoute>
-          }
-        />
+        <>
+          <Route
+            path="/admin"
+            element={
+              <PrivateRoute>
+                <AdminPage />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/kanban"
+            element={
+              <PrivateRoute>
+                <KanbanPage />
+              </PrivateRoute>
+            }
+          />
+        </>
       )}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
