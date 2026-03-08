@@ -6,3 +6,4 @@ export const VERSION = `${IS_LOCAL ? "local" : "cloud"}@${import.meta.env.VITE_G
 const _host = typeof window !== "undefined" ? window.location.hostname : "localhost";
 export const IMMICH_URL = `http://${_host}:2283`;
 export const FILEBROWSER_URL = `http://${_host}:8080`;
+export const HA_URL = `http://${_host}:8123`;

@@ -19,6 +19,7 @@ app.use("/api/users", require("./routes/users"));
 app.use("/api/backup", require("./routes/backup"));
 app.use("/api/push", require("./routes/push"));
 app.use("/api/tasks", require("./routes/tasks"));
+app.use("/api/ha", require("./routes/ha"));
 
 const PORT = process.env.PORT || 3002;
 const SYNC_CRON = process.env.SYNC_CRON || "0 * * * *";

@@ -1,4 +1,4 @@
-import { IS_LOCAL, VERSION, IMMICH_URL, FILEBROWSER_URL } from "../config";
+import { IS_LOCAL, VERSION, IMMICH_URL, FILEBROWSER_URL, HA_URL } from "../config";
 
 /**
  * Єдиний хедер для всього додатку.
@@ -47,6 +47,9 @@ export default function AppHeader({ activePage, activeTab, onTabChange, isAdmin,
             </a>
           ))}
         </nav>
+        <a href="/ha" className={active(activePage === "ha" ? activeCls : inactiveCls)}>
+          🏡 Дім
+        </a>
         <a href={IMMICH_URL} target="_blank" rel="noreferrer"
           className={active(inactiveCls + " hidden sm:flex")}>
           🖼 Фото
@@ -54,6 +57,10 @@ export default function AppHeader({ activePage, activeTab, onTabChange, isAdmin,
         <a href={FILEBROWSER_URL} target="_blank" rel="noreferrer"
           className={active(inactiveCls + " hidden sm:flex")}>
           📁 Файли
+        </a>
+        <a href={HA_URL} target="_blank" rel="noreferrer"
+          className={active(inactiveCls + " hidden sm:flex")}>
+          ⚙️ HA
         </a>
         <span className="text-gray-600 text-xs font-mono mx-3 whitespace-nowrap hidden sm:inline">{VERSION}</span>
       </header>

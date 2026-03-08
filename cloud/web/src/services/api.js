@@ -99,6 +99,11 @@ export const api = {
   createTask: (data) => request("/tasks", { method: "POST", body: JSON.stringify(data) }),
   updateTask: (id, data) => request(`/tasks/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   deleteTask: (id) => request(`/tasks/${id}`, { method: "DELETE" }),
+  // Home Assistant
+  haStates: () => request("/ha/states"),
+  haService: (domain, service, data) =>
+    request(`/ha/services/${domain}/${service}`, { method: "POST", body: JSON.stringify(data) }),
+
   addComment: (taskId, text) =>
     request(`/tasks/${taskId}/comments`, { method: "POST", body: JSON.stringify({ text }) }),
   deleteComment: (taskId, commentId) =>

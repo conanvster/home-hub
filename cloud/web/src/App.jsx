@@ -6,6 +6,7 @@ import ResetPasswordPage from "./pages/ResetPasswordPage";
 import MapPage from "./pages/MapPage";
 import AdminPage from "./pages/AdminPage";
 import KanbanPage from "./pages/KanbanPage";
+import HAPage from "./pages/HAPage";
 import { useAuthStore } from "./store/useAuthStore";
 import { IS_LOCAL } from "./config";
 
@@ -21,6 +22,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Navigate to="/kanban" replace />} />
         <Route path="/kanban" element={<KanbanPage />} />
+        <Route path="/ha" element={<HAPage />} />
         <Route path="/map" element={<MapPage />} />
         <Route path="*" element={<Navigate to="/kanban" replace />} />
       </Routes>
