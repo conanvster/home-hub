@@ -4,7 +4,8 @@ import { MapContainer, TileLayer, Marker, Polyline, Popup, Circle, useMap, useMa
 import { io } from "socket.io-client";
 import { api } from "../services/api";
 import { useAuthStore } from "../store/useAuthStore";
-import { IS_LOCAL, VERSION } from "../config";
+import { IS_LOCAL } from "../config";
+import AppHeader from "../components/AppHeader";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 
@@ -28,61 +29,6 @@ function MapClickHandler({ onMapClick }) {
   return null;
 }
 
-// ── Хедер ─────────────────────────────────────────────────────
-function AppHeader({ activeTab, onTabChange, isAdmin, logout }) {
-  const tabs = [
-    { id: "tracking", label: "Трекінг" },
-    { id: "settings", label: "Налаштування" },
-    ...(IS_LOCAL ? [{ id: "admin", label: "Адмін" }] : []),
-  ];
-
-  return (
-    <header className="flex items-center bg-gray-800 border-b border-gray-700 px-4 h-12 flex-shrink-0">
-      <span className="font-bold text-white mr-6 text-sm whitespace-nowrap">🏠 Home Hub</span>
-      <nav className="flex flex-1 h-full">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => onTabChange(tab.id)}
-            className={`px-4 h-full text-sm border-b-2 transition ${
-              activeTab === tab.id
-                ? "border-blue-500 text-white"
-                : "border-transparent text-gray-400 hover:text-white"
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-        {IS_LOCAL && (
-          <a
-            href="/kanban"
-            className="px-4 h-full text-sm border-b-2 border-transparent text-gray-400 hover:text-white flex items-center"
-          >
-            Канбан
-          </a>
-        )}
-        {!IS_LOCAL && isAdmin && (
-          <a
-            href="/admin"
-            className="px-4 h-full text-sm border-b-2 border-transparent text-gray-400 hover:text-white flex items-center"
-          >
-            Адмін
-          </a>
-        )}
-      </nav>
-      <span className="text-gray-600 text-xs font-mono mx-3 whitespace-nowrap hidden sm:inline">{VERSION}</span>
-      {!IS_LOCAL && (
-        <button
-          onClick={logout}
-          title="Вийти"
-          className="text-gray-400 hover:text-white text-sm px-3 transition whitespace-nowrap"
-        >
-          Вийти
-        </button>
-      )}
-    </header>
-  );
-}
 
 // ── Адмін вкладка (local): Синхронізація ─────────────────────
 function LocalSyncPanel() {
@@ -900,6 +846,7 @@ export default function MapPage() {
   return (
     <div className="flex flex-col h-screen bg-gray-900 text-white">
       <AppHeader
+        activePage="map"
         activeTab={activeTab}
         onTabChange={setActiveTab}
         isAdmin={!IS_LOCAL && me?.role === "admin"}

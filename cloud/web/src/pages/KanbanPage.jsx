@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { api } from "../services/api";
-import { VERSION } from "../config";
+import AppHeader from "../components/AppHeader";
 
 // ── Константи ─────────────────────────────────────────────────
 const COLUMNS = [
@@ -408,28 +408,17 @@ export default function KanbanPage() {
   return (
     <div className="flex flex-col min-h-screen bg-gray-900 text-white">
       {/* Хедер */}
-      <header className="flex items-center bg-gray-800 border-b border-gray-700 px-4 h-12 flex-shrink-0">
-        <span className="font-bold text-white mr-6 text-sm whitespace-nowrap">🏠 Home Hub</span>
-        <nav className="flex flex-1 h-full">
-          <span className="px-4 h-full text-sm border-b-2 border-blue-500 text-white flex items-center">
-            Канбан
-          </span>
-          <a
-            href="/map"
-            className="px-4 h-full text-sm border-b-2 border-transparent text-gray-400 hover:text-white flex items-center transition"
-          >
-            Трекінг
-          </a>
-        </nav>
+      <AppHeader activePage="kanban" activeTab={null} />
+
+      {/* Тулбар */}
+      <div className="flex items-center px-6 py-2 border-b border-gray-800">
         <button
           onClick={() => setShowCats(true)}
-          className="text-gray-400 hover:text-white text-xs px-3 transition whitespace-nowrap"
-          title="Керування категоріями"
+          className="text-gray-400 hover:text-white text-xs transition"
         >
           ⚙ Категорії
         </button>
-        <span className="text-gray-600 text-xs font-mono mx-3 whitespace-nowrap hidden sm:inline">{VERSION}</span>
-      </header>
+      </div>
 
       {/* Дошка */}
       <div className="flex-1 overflow-x-auto p-6">

@@ -1,8 +1,8 @@
 import { useEffect, useState, useRef } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { api } from "../services/api";
 import { useAuthStore } from "../store/useAuthStore";
-import { VERSION } from "../config";
+import AppHeader from "../components/AppHeader";
 
 // ── Вкладка: Користувачі ──────────────────────────────────────
 function UsersTab() {
@@ -340,35 +340,7 @@ export default function AdminPage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-900 text-white">
-      {/* Хедер — єдиний стиль з MapPage */}
-      <header className="flex items-center bg-gray-800 border-b border-gray-700 px-4 h-12 flex-shrink-0">
-        <span className="font-bold text-white mr-6 text-sm whitespace-nowrap">🏠 Home Hub</span>
-        <nav className="flex flex-1 h-full">
-          {[
-            { label: "Трекінг", href: "/" },
-            { label: "Канбан", href: "/kanban" },
-            { label: "Налаштування", href: "/?tab=settings" },
-          ].map((item) => (
-            <a
-              key={item.label}
-              href={item.href}
-              className="px-4 h-full text-sm border-b-2 border-transparent text-gray-400 hover:text-white flex items-center transition"
-            >
-              {item.label}
-            </a>
-          ))}
-          <span className="px-4 h-full text-sm border-b-2 border-blue-500 text-white flex items-center">
-            Адмін
-          </span>
-        </nav>
-        <span className="text-gray-600 text-xs font-mono mx-3 whitespace-nowrap hidden sm:inline">{VERSION}</span>
-        <button
-          onClick={logout}
-          className="text-gray-400 hover:text-white text-sm px-3 transition whitespace-nowrap"
-        >
-          Вийти
-        </button>
-      </header>
+      <AppHeader activePage="admin" isAdmin={true} logout={logout} />
 
       {/* Вкладки адмін-контенту */}
       <div className="border-b border-gray-700 px-6 bg-gray-900">
