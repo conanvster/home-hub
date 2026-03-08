@@ -105,4 +105,8 @@ export const api = {
 
   // Local users (synced from cloud)
   getLocalUsers: () => request("/users"),
+
+  // Push local data to cloud (disaster recovery)
+  startPushToCloud: () => request("/push/start", { method: "POST" }),
+  getPushStatus: () => request("/push/status"),
 };

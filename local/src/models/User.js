@@ -1,11 +1,13 @@
 const mongoose = require("mongoose");
 
-// Read-only mirror of cloud users (no passwords, no tokens)
+// Read-only mirror of cloud users.
+// passwordHash stores the bcrypt hash for disaster recovery (cloud restore from local).
 const userSchema = new mongoose.Schema(
   {
     email: { type: String, required: true, unique: true },
     role: { type: String, default: "viewer" },
     telegramId: { type: String, default: null },
+    passwordHash: { type: String, default: null },
     cloudId: { type: String, unique: true, sparse: true },
   },
   { timestamps: true }

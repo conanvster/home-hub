@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { MapContainer, TileLayer, Marker, Polyline, Popup, Circle, useMap, useMapEvents } from "react-leaflet";
 import { io } from "socket.io-client";
@@ -311,6 +311,9 @@ function LocalUsersPanel() {
 // ── Адмін вкладка (local): Резервна копія ────────────────────
 function LocalBackupPanel() {
   const [downloading, setDownloading] = useState(false);
+  const [pushStatus, setPushStatus] = useState(null);
+  const [pushing, setPushing] = useState(false);
+  const pollRef = useRef(null);
 
   async function handleBackup() {
     setDownloading(true);
@@ -331,8 +334,38 @@ function LocalBackupPanel() {
     }
   }
 
+  async function startPush() {
+    if (!confirm("Відновити хмарну базу даних з локальних даних?\n\nВсі поточні дані на хмарі будуть замінені!")) return;
+    setPushing(true);
+    setPushStatus(null);
+    try {
+      await api.startPushToCloud();
+      // Poll status
+      pollRef.current = setInterval(async () => {
+        const s = await api.getPushStatus();
+        setPushStatus(s);
+        if (!s.running) {
+          clearInterval(pollRef.current);
+          setPushing(false);
+        }
+      }, 1500);
+    } catch (err) {
+      setPushStatus({ step: "error", error: err.message });
+      setPushing(false);
+    }
+  }
+
+  useEffect(() => () => clearInterval(pollRef.current), []);
+
+  const pushProgress = pushStatus?.logsTotal > 0
+    ? Math.round((pushStatus.logsSent / pushStatus.logsTotal) * 100)
+    : null;
+
+  const STEP_LABELS = { meta: "Надсилання метаданих...", logs: "Надсилання логів...", done: "Завершено", error: "Помилка" };
+
   return (
-    <div className="max-w-md">
+    <div className="flex flex-col gap-4 max-w-md">
+      {/* Локальний бекап */}
       <div className="bg-gray-800 rounded-xl p-5">
         <h3 className="text-white font-semibold mb-1">Резервна копія локальних даних</h3>
         <p className="text-gray-400 text-sm mb-4">
@@ -345,6 +378,54 @@ function LocalBackupPanel() {
         >
           {downloading ? "Підготовка..." : "⬇ Завантажити бекап"}
         </button>
+      </div>
+
+      {/* Відновлення хмари з локального */}
+      <div className="bg-gray-800 rounded-xl p-5">
+        <h3 className="text-white font-semibold mb-1">Відновити хмару з локального</h3>
+        <p className="text-gray-400 text-sm mb-4">
+          Надсилає всі локальні дані на хмарний сервер. Використовувати при втраті хмарної бази даних.
+        </p>
+        <button
+          onClick={startPush}
+          disabled={pushing}
+          className="bg-red-700 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm transition disabled:opacity-50"
+        >
+          {pushing ? "Відновлення..." : "↑ Відновити хмару"}
+        </button>
+
+        {pushStatus && (
+          <div className={`mt-4 rounded-lg p-3 text-sm ${
+            pushStatus.step === "error" ? "bg-red-900/40 border border-red-700" :
+            pushStatus.step === "done" ? "bg-green-900/40 border border-green-700" :
+            "bg-gray-700"
+          }`}>
+            <div className={`font-medium mb-1 ${
+              pushStatus.step === "error" ? "text-red-300" :
+              pushStatus.step === "done" ? "text-green-400" : "text-white"
+            }`}>
+              {STEP_LABELS[pushStatus.step] || pushStatus.step}
+            </div>
+            {pushStatus.step === "logs" && pushStatus.logsTotal > 0 && (
+              <div className="mt-2">
+                <div className="flex justify-between text-xs text-gray-400 mb-1">
+                  <span>{pushStatus.logsSent.toLocaleString("uk-UA")} / {pushStatus.logsTotal.toLocaleString("uk-UA")} логів</span>
+                  <span>{pushProgress}%</span>
+                </div>
+                <div className="w-full bg-gray-600 rounded-full h-2">
+                  <div className="bg-blue-500 h-2 rounded-full transition-all" style={{ width: `${pushProgress}%` }} />
+                </div>
+              </div>
+            )}
+            {pushStatus.step === "done" && (
+              <div className="text-xs text-gray-300">
+                {pushStatus.logsTotal.toLocaleString("uk-UA")} логів відновлено •{" "}
+                {pushStatus.finishedAt && new Date(pushStatus.finishedAt).toLocaleTimeString("uk-UA")}
+              </div>
+            )}
+            {pushStatus.error && <div className="text-red-300 text-xs mt-1">{pushStatus.error}</div>}
+          </div>
+        )}
       </div>
     </div>
   );

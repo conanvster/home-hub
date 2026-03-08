@@ -50,7 +50,14 @@ async function syncFromCloud() {
 
   // Користувачі — повна заміна
   await User.deleteMany({});
-  const userDocs = data.users.map((u) => ({ ...u, cloudId: u._id }));
+  const userDocs = data.users.map((u) => ({
+    email: u.email,
+    role: u.role,
+    telegramId: u.telegramId,
+    passwordHash: u.password,
+    cloudId: u._id,
+    createdAt: u.createdAt,
+  }));
   if (userDocs.length) await User.insertMany(userDocs, { ordered: false });
   console.log(`[Sync] Users: ${data.users.length}`);
 
