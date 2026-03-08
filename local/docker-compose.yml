@@ -1,24 +1,29 @@
 version: "3.9"
 
 services:
-  sync:
-    build: .
+  mongo:
+    image: mongo:7
     restart: unless-stopped
-    env_file: .env
+    security_opt:
+      - seccomp:unconfined
+    volumes:
+      - mongo_data:/data/db
     networks:
       - local_net
 
-  # Підключається до існуючого MongoDB (наприклад Home Assistant network)
-  # Або запускає власний:
-  # mongo:
-  #   image: mongo:7
-  #   restart: unless-stopped
-  #   volumes:
-  #     - mongo_data:/data/db
-  #   networks:
-  #     - local_net
+  server:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "3002:3002"
+    depends_on:
+      - mongo
+    networks:
+      - local_net
+
+volumes:
+  mongo_data:
 
 networks:
   local_net:
-    external: true   # підключити до існуючої docker network (HA)
-    name: homeassistant_default  # замінити на назву своєї мережі

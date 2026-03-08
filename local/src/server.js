@@ -1,0 +1,35 @@
+require("dotenv").config();
+const express = require("express");
+const cors = require("cors");
+const cron = require("node-cron");
+const { connect } = require("./config/mongo");
+const { syncFromCloud } = require("./services/sync");
+
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+app.use("/api/logs", require("./routes/logs"));
+app.use("/api/trackers", require("./routes/trackers"));
+app.use("/api/status", require("./routes/status"));
+
+const PORT = process.env.PORT || 3002;
+const SYNC_CRON = process.env.SYNC_CRON || "0 * * * *";
+
+async function main() {
+  await connect();
+
+  // Sync одразу при старті
+  await syncFromCloud().catch(console.error);
+
+  // Cron розклад
+  cron.schedule(SYNC_CRON, () => syncFromCloud().catch(console.error));
+  console.log(`[Sync] Scheduled: ${SYNC_CRON}`);
+
+  app.listen(PORT, () => console.log(`[Server] Running on port ${PORT}`));
+}
+
+main().catch((err) => {
+  console.error("Fatal:", err);
+  process.exit(1);
+});
