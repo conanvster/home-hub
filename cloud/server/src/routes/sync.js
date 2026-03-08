@@ -3,8 +3,8 @@ const Log = require("../models/Log");
 const Tracker = require("../models/Tracker");
 const Zone = require("../models/Zone");
 const TelegramMessage = require("../models/TelegramMessage");
+const User = require("../models/User");
 
-// Sync endpoint for local server — authenticated by shared secret
 function syncAuth(req, res, next) {
   const secret = req.headers["x-sync-secret"];
   if (secret !== process.env.SYNC_SECRET) {
@@ -13,43 +13,31 @@ function syncAuth(req, res, next) {
   next();
 }
 
-// GET /api/sync?since=ISO_DATE&limit=10000
+// GET /api/sync?since=ISO&telegramSince=ISO&limit=10000
+// Returns all data in one request:
+//   logs + telegram — incremental (since)
+//   trackers, zones, users — full list
 router.get("/", syncAuth, async (req, res) => {
-  const { since, limit = 10000 } = req.query;
-  const filter = {};
-  if (since) filter.createdAt = { $gt: new Date(since) };
+  const { since, telegramSince, limit = 10000 } = req.query;
 
-  const logs = await Log.find(filter)
-    .sort({ createdAt: 1 })
-    .limit(Number(limit));
+  const logsFilter = since ? { createdAt: { $gt: new Date(since) } } : {};
+  const telegramFilter = telegramSince ? { createdAt: { $gt: new Date(telegramSince) } } : {};
 
-  res.json({ count: logs.length, logs });
-});
+  const [logs, trackers, zones, telegram, users] = await Promise.all([
+    Log.find(logsFilter).sort({ createdAt: 1 }).limit(Number(limit)).lean(),
+    Tracker.find().lean(),
+    Zone.find().lean(),
+    TelegramMessage.find(telegramFilter).sort({ createdAt: 1 }).limit(1000).lean(),
+    User.find().select("email role telegramId createdAt").lean(),
+  ]);
 
-// GET /api/sync/trackers
-router.get("/trackers", syncAuth, async (req, res) => {
-  const trackers = await Tracker.find().lean();
-  res.json(trackers);
-});
-
-// GET /api/sync/zones
-router.get("/zones", syncAuth, async (req, res) => {
-  const zones = await Zone.find().lean();
-  res.json(zones);
-});
-
-// GET /api/sync/telegram?since=ISO_DATE&limit=1000
-router.get("/telegram", syncAuth, async (req, res) => {
-  const { since, limit = 1000 } = req.query;
-  const filter = {};
-  if (since) filter.createdAt = { $gt: new Date(since) };
-
-  const messages = await TelegramMessage.find(filter)
-    .sort({ createdAt: 1 })
-    .limit(Number(limit))
-    .lean();
-
-  res.json({ count: messages.length, messages });
+  res.json({
+    logs: { count: logs.length, items: logs },
+    trackers,
+    zones,
+    telegram: { count: telegram.length, items: telegram },
+    users,
+  });
 });
 
 module.exports = router;

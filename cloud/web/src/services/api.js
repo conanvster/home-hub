@@ -102,4 +102,7 @@ export const api = {
     const qs = new URLSearchParams(params).toString();
     return request(`/telegram?${qs}`);
   },
+
+  // Local users (synced from cloud)
+  getLocalUsers: () => request("/users"),
 };

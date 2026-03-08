@@ -325,7 +325,6 @@ function BackupTab() {
 const TABS = [
   { id: "users", label: "Користувачі" },
   { id: "telegram", label: "Telegram лог" },
-  { id: "backup", label: "Резервна копія" },
 ];
 
 export default function AdminPage() {
@@ -391,7 +390,6 @@ export default function AdminPage() {
       <div className="p-6">
         {tab === "users" && <UsersTab />}
         {tab === "telegram" && <TelegramTab />}
-        {tab === "backup" && <BackupTab />}
       </div>
     </div>
   );

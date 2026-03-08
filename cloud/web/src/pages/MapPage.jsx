@@ -253,14 +253,118 @@ function LocalTelegramPanel() {
   );
 }
 
+// ── Адмін вкладка (local): Користувачі ───────────────────────
+function LocalUsersPanel() {
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api.getLocalUsers()
+      .then(setUsers)
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return <div className="text-gray-400 text-sm">Завантаження...</div>;
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="text-gray-400 text-xs uppercase border-b border-gray-700">
+            <th className="text-left py-2 px-3">Email</th>
+            <th className="text-left py-2 px-3">Роль</th>
+            <th className="text-left py-2 px-3">Telegram</th>
+            <th className="text-left py-2 px-3">Реєстрація</th>
+          </tr>
+        </thead>
+        <tbody>
+          {users.map((u) => (
+            <tr key={u._id} className="border-b border-gray-800 hover:bg-gray-800/50">
+              <td className="py-2 px-3 text-white">{u.email}</td>
+              <td className="py-2 px-3">
+                <span className={`text-xs px-2 py-0.5 rounded-full ${
+                  u.role === "admin" ? "bg-blue-900 text-blue-300" : "bg-gray-700 text-gray-300"
+                }`}>
+                  {u.role}
+                </span>
+              </td>
+              <td className="py-2 px-3">
+                {u.telegramId
+                  ? <span className="text-green-400 text-xs">✓ {u.telegramId}</span>
+                  : <span className="text-gray-600 text-xs">—</span>}
+              </td>
+              <td className="py-2 px-3 text-gray-400 text-xs">
+                {new Date(u.createdAt).toLocaleDateString("uk-UA")}
+              </td>
+            </tr>
+          ))}
+          {!users.length && (
+            <tr><td colSpan={4} className="py-4 text-center text-gray-500 text-sm">Немає користувачів</td></tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// ── Адмін вкладка (local): Резервна копія ────────────────────
+function LocalBackupPanel() {
+  const [downloading, setDownloading] = useState(false);
+
+  async function handleBackup() {
+    setDownloading(true);
+    try {
+      const res = await fetch("/api/backup");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const date = new Date().toISOString().slice(0, 10);
+      a.href = url;
+      a.download = `home-hub-local-backup-${date}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert("Помилка: " + err.message);
+    } finally {
+      setDownloading(false);
+    }
+  }
+
+  return (
+    <div className="max-w-md">
+      <div className="bg-gray-800 rounded-xl p-5">
+        <h3 className="text-white font-semibold mb-1">Резервна копія локальних даних</h3>
+        <p className="text-gray-400 text-sm mb-4">
+          JSON-файл з усіма колекціями: logs, trackers, zones, users, telegram messages.
+        </p>
+        <button
+          onClick={handleBackup}
+          disabled={downloading}
+          className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm transition disabled:opacity-50"
+        >
+          {downloading ? "Підготовка..." : "⬇ Завантажити бекап"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ── Адмін вкладка (local) ─────────────────────────────────────
 function LocalAdminPanel() {
   const [tab, setTab] = useState("sync");
 
+  const TABS = [
+    ["sync", "Синхронізація"],
+    ["users", "Користувачі"],
+    ["telegram", "Telegram лог"],
+    ["backup", "Резервна копія"],
+  ];
+
   return (
     <div className="p-6">
       <div className="flex gap-1 border-b border-gray-700 mb-6">
-        {[["sync", "Синхронізація"], ["telegram", "Telegram лог"]].map(([id, label]) => (
+        {TABS.map(([id, label]) => (
           <button
             key={id}
             onClick={() => setTab(id)}
@@ -273,7 +377,9 @@ function LocalAdminPanel() {
         ))}
       </div>
       {tab === "sync" && <LocalSyncPanel />}
+      {tab === "users" && <LocalUsersPanel />}
       {tab === "telegram" && <LocalTelegramPanel />}
+      {tab === "backup" && <LocalBackupPanel />}
     </div>
   );
 }
