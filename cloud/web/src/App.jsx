@@ -4,7 +4,6 @@ import RegisterPage from "./pages/RegisterPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import MapPage from "./pages/MapPage";
-import SyncStatusPage from "./pages/SyncStatusPage";
 import AdminPage from "./pages/AdminPage";
 import KanbanPage from "./pages/KanbanPage";
 import { useAuthStore } from "./store/useAuthStore";
@@ -17,47 +16,25 @@ function PrivateRoute({ children }) {
 }
 
 export default function App() {
+  if (IS_LOCAL) {
+    return (
+      <Routes>
+        <Route path="/" element={<Navigate to="/kanban" replace />} />
+        <Route path="/kanban" element={<KanbanPage />} />
+        <Route path="/map" element={<MapPage />} />
+        <Route path="*" element={<Navigate to="/kanban" replace />} />
+      </Routes>
+    );
+  }
+
   return (
     <Routes>
-      {!IS_LOCAL && (
-        <>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-          <Route path="/reset-password" element={<ResetPasswordPage />} />
-        </>
-      )}
-      <Route
-        path="/"
-        element={
-          <PrivateRoute>
-            <MapPage />
-          </PrivateRoute>
-        }
-      />
-      {IS_LOCAL && (
-        <Route path="/sync" element={<Navigate to="/?tab=admin" replace />} />
-      )}
-      {!IS_LOCAL && (
-        <>
-          <Route
-            path="/admin"
-            element={
-              <PrivateRoute>
-                <AdminPage />
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/kanban"
-            element={
-              <PrivateRoute>
-                <KanbanPage />
-              </PrivateRoute>
-            }
-          />
-        </>
-      )}
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/register" element={<RegisterPage />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
+      <Route path="/" element={<PrivateRoute><MapPage /></PrivateRoute>} />
+      <Route path="/admin" element={<PrivateRoute><AdminPage /></PrivateRoute>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

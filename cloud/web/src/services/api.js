@@ -94,11 +94,14 @@ export const api = {
   adminRestore: (backup) =>
     request("/admin/restore", { method: "POST", body: JSON.stringify(backup) }),
 
-  // Tasks (Kanban)
+  // Tasks (Kanban) — local only
   getTasks: () => request("/tasks"),
   createTask: (data) => request("/tasks", { method: "POST", body: JSON.stringify(data) }),
   updateTask: (id, data) => request(`/tasks/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   deleteTask: (id) => request(`/tasks/${id}`, { method: "DELETE" }),
+  getCategories: () => request("/tasks/categories"),
+  addCategory: (name) => request("/tasks/categories", { method: "POST", body: JSON.stringify({ name }) }),
+  deleteCategory: (name) => request(`/tasks/categories/${encodeURIComponent(name)}`, { method: "DELETE" }),
 
   // Local sync trigger
   triggerSync: () => request("/sync/trigger", { method: "POST" }),
