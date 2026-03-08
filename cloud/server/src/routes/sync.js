@@ -1,5 +1,7 @@
 const router = require("express").Router();
 const Log = require("../models/Log");
+const Tracker = require("../models/Tracker");
+const Zone = require("../models/Zone");
 
 // Sync endpoint for local server — authenticated by shared secret
 function syncAuth(req, res, next) {
@@ -21,6 +23,18 @@ router.get("/", syncAuth, async (req, res) => {
     .limit(Number(limit));
 
   res.json({ count: logs.length, logs });
+});
+
+// GET /api/sync/trackers
+router.get("/trackers", syncAuth, async (req, res) => {
+  const trackers = await Tracker.find().lean();
+  res.json(trackers);
+});
+
+// GET /api/sync/zones
+router.get("/zones", syncAuth, async (req, res) => {
+  const zones = await Zone.find().lean();
+  res.json(zones);
 });
 
 module.exports = router;

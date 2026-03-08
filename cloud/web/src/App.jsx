@@ -35,7 +35,7 @@ export default function App() {
         }
       />
       {IS_LOCAL && (
-        <Route path="/sync" element={<SyncStatusPage />} />
+        <Route path="/sync" element={<Navigate to="/?tab=admin" replace />} />
       )}
       {!IS_LOCAL && (
         <Route

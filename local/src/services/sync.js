@@ -1,4 +1,6 @@
 const Log = require("../models/Log");
+const Tracker = require("../models/Tracker");
+const Zone = require("../models/Zone");
 const SyncState = require("../models/SyncState");
 
 const CLOUD_URL = process.env.CLOUD_URL || "https://mytracking.com.ua";
@@ -72,4 +74,31 @@ async function syncFromCloud() {
   return { received: count, inserted };
 }
 
-module.exports = { syncFromCloud };
+async function syncMeta() {
+  try {
+    const headers = { "x-sync-secret": SYNC_SECRET };
+
+    const [trackersRes, zonesRes] = await Promise.all([
+      fetch(`${CLOUD_URL}/api/sync/trackers`, { headers }),
+      fetch(`${CLOUD_URL}/api/sync/zones`, { headers }),
+    ]);
+
+    if (trackersRes.ok) {
+      const trackers = await trackersRes.json();
+      await Tracker.deleteMany({});
+      if (trackers.length) await Tracker.insertMany(trackers, { ordered: false });
+      console.log(`[Sync] Trackers: ${trackers.length}`);
+    }
+
+    if (zonesRes.ok) {
+      const zones = await zonesRes.json();
+      await Zone.deleteMany({});
+      if (zones.length) await Zone.insertMany(zones, { ordered: false });
+      console.log(`[Sync] Zones: ${zones.length}`);
+    }
+  } catch (err) {
+    console.error("[Sync] Meta sync error:", err.message);
+  }
+}
+
+module.exports = { syncFromCloud, syncMeta };

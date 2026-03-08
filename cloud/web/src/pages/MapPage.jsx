@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { MapContainer, TileLayer, Marker, Polyline, Popup, Circle, useMap, useMapEvents } from "react-leaflet";
 import { io } from "socket.io-client";
@@ -33,6 +33,7 @@ function AppHeader({ activeTab, onTabChange, isAdmin, logout }) {
   const tabs = [
     { id: "tracking", label: "Трекінг" },
     { id: "settings", label: "Налаштування" },
+    ...(IS_LOCAL ? [{ id: "admin", label: "Адмін" }] : []),
   ];
 
   return (
@@ -52,20 +53,12 @@ function AppHeader({ activeTab, onTabChange, isAdmin, logout }) {
             {tab.label}
           </button>
         ))}
-        {isAdmin && (
+        {!IS_LOCAL && isAdmin && (
           <a
             href="/admin"
             className="px-4 h-full text-sm border-b-2 border-transparent text-gray-400 hover:text-white flex items-center"
           >
             Адмін
-          </a>
-        )}
-        {IS_LOCAL && (
-          <a
-            href="/sync"
-            className="px-4 h-full text-sm border-b-2 border-transparent text-gray-400 hover:text-white flex items-center"
-          >
-            Синхронізація
           </a>
         )}
       </nav>
@@ -79,6 +72,88 @@ function AppHeader({ activeTab, onTabChange, isAdmin, logout }) {
         </button>
       )}
     </header>
+  );
+}
+
+// ── Адмін вкладка (local) ─────────────────────────────────────
+function LocalAdminPanel() {
+  const [status, setStatus] = useState(null);
+  const [syncing, setSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState(null);
+
+  const load = useCallback(async () => {
+    try { setStatus(await api.getSyncStatus()); } catch {}
+  }, []);
+
+  useEffect(() => {
+    load();
+    const t = setInterval(load, 10000);
+    return () => clearInterval(t);
+  }, [load]);
+
+  async function triggerSync() {
+    setSyncing(true);
+    setSyncResult(null);
+    try {
+      const r = await api.triggerSync();
+      setSyncResult(r);
+      await load();
+    } catch (err) {
+      setSyncResult({ error: err.message });
+    } finally {
+      setSyncing(false);
+    }
+  }
+
+  function formatUptime(s) {
+    if (!s) return "—";
+    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = Math.floor(s % 60);
+    return [h && `${h}г`, m && `${m}хв`, `${sec}с`].filter(Boolean).join(" ");
+  }
+
+  return (
+    <div className="max-w-xl mx-auto p-6">
+      <h2 className="text-lg font-semibold text-white mb-4">Синхронізація</h2>
+
+      {status ? (
+        <div className="bg-gray-800 rounded-xl p-5 space-y-3 mb-4">
+          {[
+            ["Статус", status.status === "ok" ? "✅ Онлайн" : "❌ Помилка"],
+            ["Остання синхронізація", status.lastSync ? new Date(status.lastSync).toLocaleString("uk-UA") : "—"],
+            ["Всього синхронізовано", status.totalSynced?.toLocaleString("uk-UA") ?? "—"],
+            ["Кількість синхронізацій", status.syncCount ?? "—"],
+            ["Uptime", formatUptime(status.uptime)],
+          ].map(([label, value]) => (
+            <div key={label} className="flex justify-between items-center border-b border-gray-700 pb-3 last:border-0 last:pb-0">
+              <span className="text-gray-400 text-sm">{label}</span>
+              <span className="text-sm font-medium text-white">{value}</span>
+            </div>
+          ))}
+          {status.lastError && (
+            <div className="text-red-400 text-xs pt-1">Помилка: {status.lastError}</div>
+          )}
+        </div>
+      ) : (
+        <div className="text-gray-400 text-sm mb-4">Завантаження...</div>
+      )}
+
+      <div className="flex items-center gap-3">
+        <button
+          onClick={triggerSync}
+          disabled={syncing}
+          className="bg-blue-600 hover:bg-blue-500 text-white text-sm px-4 py-2 rounded-lg transition disabled:opacity-50"
+        >
+          {syncing ? "Синхронізація..." : "↻ Синхронізувати зараз"}
+        </button>
+        {syncResult && !syncResult.error && (
+          <span className="text-green-400 text-sm">+{syncResult.inserted} записів ({syncResult.duration} мс)</span>
+        )}
+        {syncResult?.error && (
+          <span className="text-red-400 text-sm">{syncResult.error}</span>
+        )}
+      </div>
+      <p className="text-gray-600 text-xs mt-3">Автооновлення кожні 10 секунд</p>
+    </div>
   );
 }
 
@@ -575,6 +650,13 @@ export default function MapPage() {
                 )}
               </MapContainer>
             </div>
+          </div>
+        )}
+
+        {/* Адмін (local): синхронізація */}
+        {activeTab === "admin" && IS_LOCAL && (
+          <div className="h-full overflow-y-auto bg-gray-900">
+            <LocalAdminPanel />
           </div>
         )}
 
