@@ -3,7 +3,7 @@ const express = require("express");
 const cors = require("cors");
 const cron = require("node-cron");
 const { connect } = require("./config/mongo");
-const { syncFromCloud, syncMeta } = require("./services/sync");
+const { syncFromCloud } = require("./services/sync");
 
 const app = express();
 app.use(cors());
@@ -21,10 +21,7 @@ const SYNC_CRON = process.env.SYNC_CRON || "0 * * * *";
 async function main() {
   await connect();
 
-  // Sync метаданих (трекери, зони) при старті
-  await syncMeta().catch(console.error);
-
-  // Sync логів одразу при старті
+  // Sync при старті (логи + трекери + зони)
   await syncFromCloud().catch(console.error);
 
   // Cron розклад

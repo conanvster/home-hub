@@ -9,15 +9,20 @@ const SYNC_SECRET = process.env.SYNC_SECRET;
 async function syncFromCloud() {
   const state = await SyncState.get();
   const since = state.lastSync ? state.lastSync.toISOString() : null;
-  const url = `${CLOUD_URL}/api/sync${since ? `?since=${since}` : ""}`;
 
   console.log(`[${new Date().toISOString()}] Syncing from cloud...`);
 
-  let res;
+  const headers = { "x-sync-secret": SYNC_SECRET };
+
+  // Паралельно: трекери, зони і нові логи
+  let logsRes, trackersRes, zonesRes;
   try {
-    res = await fetch(url, {
-      headers: { "x-sync-secret": SYNC_SECRET },
-    });
+    const logsUrl = `${CLOUD_URL}/api/sync${since ? `?since=${since}` : ""}`;
+    [logsRes, trackersRes, zonesRes] = await Promise.all([
+      fetch(logsUrl, { headers }),
+      fetch(`${CLOUD_URL}/api/sync/trackers`, { headers }),
+      fetch(`${CLOUD_URL}/api/sync/zones`, { headers }),
+    ]);
   } catch (err) {
     const errMsg = `Network error: ${err.message}`;
     console.error(`[Sync] ${errMsg}`);
@@ -25,15 +30,32 @@ async function syncFromCloud() {
     throw new Error(errMsg);
   }
 
-  if (!res.ok) {
-    const errMsg = `HTTP ${res.status}`;
+  if (!logsRes.ok) {
+    const errMsg = `HTTP ${logsRes.status}`;
     console.error(`[Sync] Failed: ${errMsg}`);
     await SyncState.findOneAndUpdate({}, { lastError: errMsg, lastErrorAt: new Date() });
     throw new Error(errMsg);
   }
 
-  const { logs, count } = await res.json();
-  console.log(`[Sync] Received ${count} new records`);
+  // Трекери
+  if (trackersRes.ok) {
+    const trackers = await trackersRes.json();
+    await Tracker.deleteMany({});
+    if (trackers.length) await Tracker.insertMany(trackers, { ordered: false });
+    console.log(`[Sync] Trackers: ${trackers.length}`);
+  }
+
+  // Зони
+  if (zonesRes.ok) {
+    const zones = await zonesRes.json();
+    await Zone.deleteMany({});
+    if (zones.length) await Zone.insertMany(zones, { ordered: false });
+    console.log(`[Sync] Zones: ${zones.length}`);
+  }
+
+  // Логи
+  const { logs, count } = await logsRes.json();
+  console.log(`[Sync] Received ${count} new log records`);
 
   if (!count) {
     await SyncState.findOneAndUpdate({}, {
@@ -62,7 +84,7 @@ async function syncFromCloud() {
     }
   }
 
-  console.log(`[Sync] Inserted ${inserted} new records`);
+  console.log(`[Sync] Inserted ${inserted} new log records`);
 
   const lastLog = logs[logs.length - 1];
   await SyncState.findOneAndUpdate({}, {
@@ -74,31 +96,4 @@ async function syncFromCloud() {
   return { received: count, inserted };
 }
 
-async function syncMeta() {
-  try {
-    const headers = { "x-sync-secret": SYNC_SECRET };
-
-    const [trackersRes, zonesRes] = await Promise.all([
-      fetch(`${CLOUD_URL}/api/sync/trackers`, { headers }),
-      fetch(`${CLOUD_URL}/api/sync/zones`, { headers }),
-    ]);
-
-    if (trackersRes.ok) {
-      const trackers = await trackersRes.json();
-      await Tracker.deleteMany({});
-      if (trackers.length) await Tracker.insertMany(trackers, { ordered: false });
-      console.log(`[Sync] Trackers: ${trackers.length}`);
-    }
-
-    if (zonesRes.ok) {
-      const zones = await zonesRes.json();
-      await Zone.deleteMany({});
-      if (zones.length) await Zone.insertMany(zones, { ordered: false });
-      console.log(`[Sync] Zones: ${zones.length}`);
-    }
-  } catch (err) {
-    console.error("[Sync] Meta sync error:", err.message);
-  }
-}
-
-module.exports = { syncFromCloud, syncMeta };
+module.exports = { syncFromCloud };
