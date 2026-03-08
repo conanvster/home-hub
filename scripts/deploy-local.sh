@@ -16,16 +16,16 @@ echo "✅ Код оновлено"
 
 echo ""
 echo "━━━ 🐳 Rebuild + restart ━━━"
-ssh "$HOME_SERVER" "cd $SERVER_PATH/local && docker compose up -d --build server"
+ssh "$HOME_SERVER" "cd $SERVER_PATH/local && docker compose up -d --build server web"
 echo "✅ Контейнер перезапущено"
 
 echo ""
 echo "━━━ 🩺 Health check: local server ━━━"
 sleep 4
-STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://192.168.1.34:3002/api/status || echo "000")
+STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://192.168.1.34/api/status || echo "000")
 if [ "$STATUS" = "200" ]; then
   echo "✅ Local health OK (HTTP $STATUS)"
-  curl -s http://192.168.1.34:3002/api/status | python3 -m json.tool 2>/dev/null || true
+  curl -s http://192.168.1.34/api/status | python3 -m json.tool 2>/dev/null || true
 else
   echo "❌ Local health FAIL (HTTP $STATUS)"
   ssh "$HOME_SERVER" "cd $SERVER_PATH/local && docker compose logs server --tail=20"
