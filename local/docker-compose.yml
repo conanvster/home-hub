@@ -41,8 +41,24 @@ services:
     networks:
       - local_net
 
+  filebrowser:
+    image: filebrowser/filebrowser:s6
+    container_name: local-filebrowser
+    ports:
+      - "8080:80"
+    volumes:
+      - /mnt/eca92faf-7af1-44b5-a96f-93febab1aa22/files:/srv
+      - filebrowser_data:/database
+    environment:
+      - PUID=1000
+      - PGID=1000
+    restart: unless-stopped
+    networks:
+      - local_net
+
 volumes:
   mongo_data:
+  filebrowser_data:
 
 networks:
   local_net:
