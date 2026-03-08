@@ -19,11 +19,10 @@ definitions:
         deployment: production
         script:
           - apk add --no-cache rsync openssh-client curl git
-          # SSH debug
+          # SSH debug — print the public key Bitbucket is actually using
           - mkdir -p ~/.ssh
-          - ls -la ~/.ssh/ || true
-          - ssh-add -l || true
-          - ssh -o StrictHostKeyChecking=no -v root@mytracking.com.ua "echo SSH_OK" 2>&1 | tail -20
+          - ssh-keygen -y -f /opt/atlassian/pipelines/agent/ssh/id_rsa || echo "no key at default path"
+          - ls /opt/atlassian/pipelines/agent/ssh/ || true
           # Deploy
           - GIT_COMMIT=$(git rev-parse --short HEAD)
           - echo "Deploying commit $GIT_COMMIT..."
