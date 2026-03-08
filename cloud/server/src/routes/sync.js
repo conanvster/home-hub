@@ -10,9 +10,9 @@ function syncAuth(req, res, next) {
   next();
 }
 
-// GET /api/sync?since=ISO_DATE&limit=1000
+// GET /api/sync?since=ISO_DATE&limit=10000
 router.get("/", syncAuth, async (req, res) => {
-  const { since, limit = 1000 } = req.query;
+  const { since, limit = 10000 } = req.query;
   const filter = {};
   if (since) filter.createdAt = { $gt: new Date(since) };
 
