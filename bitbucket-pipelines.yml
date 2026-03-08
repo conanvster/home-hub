@@ -19,20 +19,21 @@ definitions:
         deployment: production
         script:
           - apk add --no-cache rsync openssh-client curl git
-          # Known hosts (Bitbucket manages the SSH key automatically)
+          # SSH debug
           - mkdir -p ~/.ssh
-          - echo "mytracking.com.ua ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDHI+ouxNAjV1mMAyg3PD4WRKYhcTq5AyQMxm0DGCk9Q0O8gXv6DII2xldftpivO16bz/CgcfLLsMAipdzFtn4ZoMS97klVZDX0dJYe1YzlHTGM1aTK+vIPrTsGPx0QwRN4Gixhf1w8rvSf2F09j+tpIKwTDGV3rlOQlZg8sVRDJqsYwP/I044tjAo2gUV/WfvPu98y+lPqk9GsjPRRCePfRFsyPBmScSQPILuKz3027aD6P86R95sg3Bbv7agDXSDEDhUUyg/7AnUE286mDRMf0ZBIW2Mw0Mcayg4LTMkaIB8Hl3BbuBOd0d6oMa8NFaDGNj0YVYS3Z/wD56a9MVqLOrhkuZrLAUAo8/MuL9S0An9ZK40QjWOvOPRS4YM9dUaFjAkteaJBE6IpMMcAEpDPUima3YGZkJDW9ogjv5h0loravx0LBN6LEuTlN5fFKyptx+80AEOyML46MrZJWyGXlfkiolJar0KzNJYGPWS0A4HJhvtCAyT/WlShmufR5Tk=" >> ~/.ssh/known_hosts
-          - echo "mytracking.com.ua ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOqXXCrUhub5anhdlEc2SxJkF6Sa1CyHbIIJdes/QklS" >> ~/.ssh/known_hosts
+          - ls -la ~/.ssh/ || true
+          - ssh-add -l || true
+          - ssh -o StrictHostKeyChecking=no -v root@mytracking.com.ua "echo SSH_OK" 2>&1 | tail -20
           # Deploy
           - GIT_COMMIT=$(git rev-parse --short HEAD)
           - echo "Deploying commit $GIT_COMMIT..."
           - >
             rsync -az --delete
             --exclude 'node_modules' --exclude '.env' --exclude 'dist'
-            -e "ssh -o StrictHostKeyChecking=yes"
+            -e "ssh -o StrictHostKeyChecking=no"
             cloud/ root@mytracking.com.ua:/root/project/home-hub/
           - >
-            ssh root@mytracking.com.ua
+            ssh -o StrictHostKeyChecking=no root@mytracking.com.ua
             "cd /root/project/home-hub &&
             GIT_COMMIT=$GIT_COMMIT /usr/local/bin/docker-compose-v2 up -d --build server web"
           # Health check
