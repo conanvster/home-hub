@@ -14,6 +14,7 @@ app.use("/api/trackers", require("./routes/trackers"));
 app.use("/api/status", require("./routes/status"));
 app.use("/api/zones", require("./routes/zones"));
 app.use("/api/sync", require("./routes/sync"));
+app.use("/api/telegram", require("./routes/telegram"));
 
 const PORT = process.env.PORT || 3002;
 const SYNC_CRON = process.env.SYNC_CRON || "0 * * * *";

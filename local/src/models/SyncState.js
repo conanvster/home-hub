@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 
 const syncStateSchema = new mongoose.Schema({
   lastSync: { type: Date, default: null },
+  lastTelegramSync: { type: Date, default: null },
   totalSynced: { type: Number, default: 0 },
   lastError: { type: String, default: null },
   lastErrorAt: { type: Date, default: null },

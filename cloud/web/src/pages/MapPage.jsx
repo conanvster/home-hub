@@ -75,8 +75,8 @@ function AppHeader({ activeTab, onTabChange, isAdmin, logout }) {
   );
 }
 
-// ── Адмін вкладка (local) ─────────────────────────────────────
-function LocalAdminPanel() {
+// ── Адмін вкладка (local): Синхронізація ─────────────────────
+function LocalSyncPanel() {
   const [status, setStatus] = useState(null);
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState(null);
@@ -112,9 +112,7 @@ function LocalAdminPanel() {
   }
 
   return (
-    <div className="max-w-xl mx-auto p-6">
-      <h2 className="text-lg font-semibold text-white mb-4">Синхронізація</h2>
-
+    <div className="max-w-xl">
       {status ? (
         <div className="bg-gray-800 rounded-xl p-5 space-y-3 mb-4">
           {[
@@ -153,6 +151,129 @@ function LocalAdminPanel() {
         )}
       </div>
       <p className="text-gray-600 text-xs mt-3">Автооновлення кожні 10 секунд</p>
+    </div>
+  );
+}
+
+// ── Адмін вкладка (local): Telegram лог ──────────────────────
+function LocalTelegramPanel() {
+  const [data, setData] = useState(null);
+  const [page, setPage] = useState(1);
+  const [direction, setDirection] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function load() {
+    setLoading(true);
+    try { setData(await api.getLocalTelegram({ page, direction })); }
+    finally { setLoading(false); }
+  }
+
+  useEffect(() => { setPage(1); }, [direction]);
+  useEffect(() => { load(); }, [page, direction]);
+
+  const STATUS_COLORS = {
+    pending: "text-yellow-400",
+    sent: "text-green-400",
+    failed: "text-red-400",
+    received: "text-blue-400",
+  };
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex gap-2 flex-wrap items-center">
+        <select
+          value={direction}
+          onChange={(e) => setDirection(e.target.value)}
+          className="bg-gray-700 text-white text-xs rounded px-2 py-1"
+        >
+          <option value="">Всі напрямки</option>
+          <option value="in">Вхідні (in)</option>
+          <option value="out">Вихідні (out)</option>
+        </select>
+        {data && <span className="text-gray-400 text-xs">Всього: {data.total}</span>}
+        {loading && <span className="text-gray-500 text-xs">Завантаження...</span>}
+      </div>
+
+      {data && (
+        <>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-gray-400 text-xs uppercase border-b border-gray-700">
+                  <th className="text-left py-2 px-3">Дата</th>
+                  <th className="text-left py-2 px-3">Напрямок</th>
+                  <th className="text-left py-2 px-3">Статус</th>
+                  <th className="text-left py-2 px-3">Chat ID</th>
+                  <th className="text-left py-2 px-3">Текст</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.items.map((m) => (
+                  <tr key={m._id} className="border-b border-gray-800 hover:bg-gray-800/50 align-top">
+                    <td className="py-2 px-3 text-gray-400 text-xs whitespace-nowrap">
+                      {new Date(m.createdAt).toLocaleString("uk-UA")}
+                    </td>
+                    <td className="py-2 px-3">
+                      <span className={`text-xs ${m.direction === "in" ? "text-blue-400" : "text-purple-400"}`}>
+                        {m.direction === "in" ? "← in" : "→ out"}
+                      </span>
+                    </td>
+                    <td className="py-2 px-3">
+                      <span className={`text-xs ${STATUS_COLORS[m.status] || "text-gray-400"}`}>
+                        {m.status}
+                      </span>
+                    </td>
+                    <td className="py-2 px-3 text-gray-400 text-xs font-mono">{m.telegramId}</td>
+                    <td className="py-2 px-3 text-gray-200 text-xs max-w-xs break-words">
+                      {m.text}
+                      {m.error && <div className="text-red-400 text-xs mt-0.5">{m.error}</div>}
+                    </td>
+                  </tr>
+                ))}
+                {data.items.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="py-4 text-center text-gray-500 text-sm">Немає повідомлень</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+          {data.pages > 1 && (
+            <div className="flex gap-2 items-center text-sm">
+              <button disabled={page === 1} onClick={() => setPage(p => p - 1)}
+                className="px-3 py-1 rounded bg-gray-700 hover:bg-gray-600 disabled:opacity-40">←</button>
+              <span className="text-gray-400">{page} / {data.pages}</span>
+              <button disabled={page === data.pages} onClick={() => setPage(p => p + 1)}
+                className="px-3 py-1 rounded bg-gray-700 hover:bg-gray-600 disabled:opacity-40">→</button>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+// ── Адмін вкладка (local) ─────────────────────────────────────
+function LocalAdminPanel() {
+  const [tab, setTab] = useState("sync");
+
+  return (
+    <div className="p-6">
+      <div className="flex gap-1 border-b border-gray-700 mb-6">
+        {[["sync", "Синхронізація"], ["telegram", "Telegram лог"]].map(([id, label]) => (
+          <button
+            key={id}
+            onClick={() => setTab(id)}
+            className={`px-4 py-2 text-sm border-b-2 transition ${
+              tab === id ? "border-blue-500 text-white" : "border-transparent text-gray-400 hover:text-white"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      {tab === "sync" && <LocalSyncPanel />}
+      {tab === "telegram" && <LocalTelegramPanel />}
     </div>
   );
 }

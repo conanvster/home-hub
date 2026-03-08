@@ -96,4 +96,10 @@ export const api = {
 
   // Local sync trigger
   triggerSync: () => request("/sync/trigger", { method: "POST" }),
+
+  // Local telegram log
+  getLocalTelegram: (params = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    return request(`/telegram?${qs}`);
+  },
 };

@@ -2,6 +2,7 @@ const router = require("express").Router();
 const Log = require("../models/Log");
 const Tracker = require("../models/Tracker");
 const Zone = require("../models/Zone");
+const TelegramMessage = require("../models/TelegramMessage");
 
 // Sync endpoint for local server — authenticated by shared secret
 function syncAuth(req, res, next) {
@@ -35,6 +36,20 @@ router.get("/trackers", syncAuth, async (req, res) => {
 router.get("/zones", syncAuth, async (req, res) => {
   const zones = await Zone.find().lean();
   res.json(zones);
+});
+
+// GET /api/sync/telegram?since=ISO_DATE&limit=1000
+router.get("/telegram", syncAuth, async (req, res) => {
+  const { since, limit = 1000 } = req.query;
+  const filter = {};
+  if (since) filter.createdAt = { $gt: new Date(since) };
+
+  const messages = await TelegramMessage.find(filter)
+    .sort({ createdAt: 1 })
+    .limit(Number(limit))
+    .lean();
+
+  res.json({ count: messages.length, messages });
 });
 
 module.exports = router;
