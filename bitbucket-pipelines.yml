@@ -1,0 +1,53 @@
+image: node:20-alpine
+
+definitions:
+  caches:
+    npm-cloud: cloud/web/node_modules
+
+  steps:
+    - step: &build-check
+        name: Build check
+        caches:
+          - npm-cloud
+        script:
+          - npm ci --prefix cloud/web
+          - npm run build --prefix cloud/web
+          - VITE_MODE=local npm run build --prefix cloud/web
+
+    - step: &deploy-cloud
+        name: Deploy to cloud
+        deployment: production
+        script:
+          - apk add --no-cache rsync openssh-client curl
+          # SSH setup
+          - mkdir -p ~/.ssh
+          - echo "$DEPLOY_SSH_KEY" | base64 -d > ~/.ssh/id_rsa
+          - chmod 600 ~/.ssh/id_rsa
+          - echo "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          # Deploy
+          - GIT_COMMIT=$(git rev-parse --short HEAD)
+          - echo "Deploying commit $GIT_COMMIT..."
+          - >
+            rsync -az --delete
+            --exclude 'node_modules' --exclude '.env' --exclude 'dist'
+            -e "ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=yes"
+            cloud/ root@mytracking.com.ua:/root/project/home-hub/
+          - >
+            ssh -i ~/.ssh/id_rsa root@mytracking.com.ua
+            "cd /root/project/home-hub &&
+            GIT_COMMIT=$GIT_COMMIT /usr/local/bin/docker-compose-v2 up -d --build server web"
+          # Health check
+          - sleep 8
+          - |
+            STATUS=$(curl -sf -o /dev/null -w "%{http_code}" https://mytracking.com.ua/api/health || echo "000")
+            if [ "$STATUS" = "200" ]; then
+              echo "Health check OK (HTTP $STATUS)"
+            else
+              echo "Health check FAIL (HTTP $STATUS)" && exit 1
+            fi
+
+pipelines:
+  branches:
+    main:
+      - step: *build-check
+      - step: *deploy-cloud
