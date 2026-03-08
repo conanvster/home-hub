@@ -53,6 +53,7 @@ app.use("/api/logs", require("./routes/logs"));
 app.use("/api/zones", require("./routes/zones"));
 app.use("/api/sync", require("./routes/sync"));
 app.use("/api/telegram", require("./routes/telegram"));
+app.use("/api/admin", require("./routes/admin"));
 
 // Health check
 app.get("/api/health", (req, res) => {

@@ -20,14 +20,14 @@ async function syncFromCloud() {
     const errMsg = `Network error: ${err.message}`;
     console.error(`[Sync] ${errMsg}`);
     await SyncState.findOneAndUpdate({}, { lastError: errMsg, lastErrorAt: new Date() });
-    return;
+    throw new Error(errMsg);
   }
 
   if (!res.ok) {
     const errMsg = `HTTP ${res.status}`;
     console.error(`[Sync] Failed: ${errMsg}`);
     await SyncState.findOneAndUpdate({}, { lastError: errMsg, lastErrorAt: new Date() });
-    return;
+    throw new Error(errMsg);
   }
 
   const { logs, count } = await res.json();
@@ -38,7 +38,7 @@ async function syncFromCloud() {
       lastError: null,
       syncCount: state.syncCount + 1,
     });
-    return;
+    return { received: 0, inserted: 0 };
   }
 
   let inserted = 0;
@@ -69,6 +69,7 @@ async function syncFromCloud() {
     lastError: null,
     syncCount: state.syncCount + 1,
   });
+  return { received: count, inserted };
 }
 
 module.exports = { syncFromCloud };

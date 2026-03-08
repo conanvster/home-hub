@@ -4,20 +4,28 @@ import RegisterPage from "./pages/RegisterPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import MapPage from "./pages/MapPage";
+import SyncStatusPage from "./pages/SyncStatusPage";
+import AdminPage from "./pages/AdminPage";
 import { useAuthStore } from "./store/useAuthStore";
+import { IS_LOCAL } from "./config";
 
 function PrivateRoute({ children }) {
   const token = useAuthStore((s) => s.token);
+  if (IS_LOCAL) return children;
   return token ? children : <Navigate to="/login" replace />;
 }
 
 export default function App() {
   return (
     <Routes>
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/register" element={<RegisterPage />} />
-      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-      <Route path="/reset-password" element={<ResetPasswordPage />} />
+      {!IS_LOCAL && (
+        <>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
+        </>
+      )}
       <Route
         path="/"
         element={
@@ -26,6 +34,20 @@ export default function App() {
           </PrivateRoute>
         }
       />
+      {IS_LOCAL && (
+        <Route path="/sync" element={<SyncStatusPage />} />
+      )}
+      {!IS_LOCAL && (
+        <Route
+          path="/admin"
+          element={
+            <PrivateRoute>
+              <AdminPage />
+            </PrivateRoute>
+          }
+        />
+      )}
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }

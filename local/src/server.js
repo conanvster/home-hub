@@ -12,6 +12,7 @@ app.use(express.json());
 app.use("/api/logs", require("./routes/logs"));
 app.use("/api/trackers", require("./routes/trackers"));
 app.use("/api/status", require("./routes/status"));
+app.use("/api/sync", require("./routes/sync"));
 
 const PORT = process.env.PORT || 3002;
 const SYNC_CRON = process.env.SYNC_CRON || "0 * * * *";

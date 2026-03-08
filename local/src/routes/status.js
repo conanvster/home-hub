@@ -7,6 +7,8 @@ router.get("/", async (req, res) => {
   const state = await SyncState.get();
   const totalLogs = await Log.countDocuments();
   res.json({
+    status: "ok",
+    uptime: process.uptime(),
     lastSync: state.lastSync,
     totalSynced: state.totalSynced,
     totalLogs,

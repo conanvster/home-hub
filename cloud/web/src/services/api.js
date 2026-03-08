@@ -78,4 +78,22 @@ export const api = {
 
   deleteZone: (id) =>
     request(`/zones/${id}`, { method: "DELETE" }),
+
+  getSyncStatus: () => request("/status"),
+
+  // Admin
+  adminGetUsers: () => request("/admin/users"),
+  adminUpdateUser: (id, data) =>
+    request(`/admin/users/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  adminDeleteUser: (id) =>
+    request(`/admin/users/${id}`, { method: "DELETE" }),
+  adminGetTelegram: (params = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    return request(`/admin/telegram?${qs}`);
+  },
+  adminRestore: (backup) =>
+    request("/admin/restore", { method: "POST", body: JSON.stringify(backup) }),
+
+  // Local sync trigger
+  triggerSync: () => request("/sync/trigger", { method: "POST" }),
 };
