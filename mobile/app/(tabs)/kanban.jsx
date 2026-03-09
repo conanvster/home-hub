@@ -185,7 +185,7 @@ export default function KanbanScreen() {
       </View>
 
       {/* Column tabs */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.tabs} contentContainerStyle={{ gap: 4, paddingHorizontal: 16 }}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.tabs} contentContainerStyle={{ gap: 4, paddingHorizontal: 16, alignItems: "center" }}>
         {COLUMNS.map((c) => {
           const count = tasks.filter((t) => t.column === c.key).length;
           return (
@@ -229,7 +229,7 @@ const s = StyleSheet.create({
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: "#374151" },
   headerTitle: { fontSize: 18, fontWeight: "700", color: "#fff" },
   addBtn: { backgroundColor: "#3b82f6", width: 36, height: 36, borderRadius: 18, justifyContent: "center", alignItems: "center" },
-  tabs: { borderBottomWidth: 1, borderBottomColor: "#374151", paddingVertical: 8 },
+  tabs: { borderBottomWidth: 1, borderBottomColor: "#374151", paddingVertical: 6, maxHeight: 52, flexGrow: 0 },
   tab: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, backgroundColor: "#1f2937", flexDirection: "row", alignItems: "center", gap: 4 },
   tabActive: { backgroundColor: "#1d4ed8" },
   tabText: { color: "#9ca3af", fontSize: 13 },

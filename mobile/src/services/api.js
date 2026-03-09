@@ -69,6 +69,10 @@ export const api = {
   // ── Trackers / logs (cloud) ──────────────────────────────────
   getTrackers: () => cloudReq("/trackers"),
   getLatest: () => cloudReq("/logs/latest"),
+  getLogs: (imei, from, to, limit = 300) => {
+    const qs = new URLSearchParams({ imei, ...(from && { from }), ...(to && { to }), limit }).toString();
+    return cloudReq(`/logs?${qs}`);
+  },
 
   // ── Kanban (local) ───────────────────────────────────────────
   getTasks: () => localReq("/tasks"),
