@@ -40,4 +40,33 @@ router.get("/latest", auth, async (req, res) => {
   res.json(results);
 });
 
+// POST /api/logs/phone — координати від мобільного телефону
+router.post("/phone", auth, async (req, res) => {
+  try {
+    const { latitude, longitude, speed = 0, accuracy } = req.body;
+    if (!latitude || !longitude) return res.status(400).json({ error: "latitude and longitude required" });
+
+    const imei = `phone-${req.user.id}`;
+
+    // Авто-реєстрація трекера якщо не існує
+    await Tracker.findOneAndUpdate(
+      { imei },
+      { $setOnInsert: { name: "📱 Телефон", imei, userId: req.user.id, color: "#8b5cf6" } },
+      { upsert: true, new: true }
+    );
+
+    const log = await Log.create({
+      imei,
+      latitude,
+      longitude,
+      speed: speed ? Math.round(speed * 3.6) : 0, // m/s → km/h
+      deviceTime: new Date(),
+    });
+
+    res.status(201).json(log);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

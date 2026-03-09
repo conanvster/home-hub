@@ -88,6 +88,10 @@ export const api = {
   haService: (domain, service, data) =>
     localReq(`/ha/services/${domain}/${service}`, { method: "POST", body: JSON.stringify(data) }),
 
+  // ── Phone location (cloud) ───────────────────────────────────
+  sendPhoneLocation: (latitude, longitude, speed, accuracy) =>
+    cloudReq("/logs/phone", { method: "POST", body: JSON.stringify({ latitude, longitude, speed, accuracy }) }),
+
   // ── Chat (cloud) ─────────────────────────────────────────────
   getChatMessages: (limit = 50) => cloudReq(`/chat/messages?limit=${limit}`),
   sendChatMessage: (text) =>

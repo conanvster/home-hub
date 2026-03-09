@@ -1,8 +1,10 @@
 import { create } from "zustand";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { startLocationTracking, stopLocationTracking } from "../tasks/locationTask";
 
 const DEFAULTS = {
   localUrl: "http://192.168.1.34",
+  phoneTracking: false,
   features: {
     tracking: true,
     ha: true,
@@ -35,6 +37,21 @@ export const useSettingsStore = create((set, get) => ({
     const next = { ...get(), features };
     set({ features });
     await AsyncStorage.setItem("settings", JSON.stringify(next));
+  },
+
+  setPhoneTracking: async (enabled) => {
+    try {
+      if (enabled) {
+        await startLocationTracking();
+      } else {
+        await stopLocationTracking();
+      }
+      set({ phoneTracking: enabled });
+      const s = get();
+      await AsyncStorage.setItem("settings", JSON.stringify({ ...s, phoneTracking: enabled }));
+    } catch (err) {
+      throw err;
+    }
   },
 
   checkLocalServer: async () => {

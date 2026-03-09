@@ -3,6 +3,8 @@ import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   Switch, TextInput, Alert,
 } from "react-native";
+import * as TaskManager from "expo-task-manager";
+import { LOCATION_TASK } from "../../src/tasks/locationTask";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { useAuthStore } from "../../src/store/useAuthStore";
@@ -21,8 +23,16 @@ const FEATURES = [
 export default function SettingsScreen() {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
-  const { localUrl, features, localOnline, setLocalUrl, toggleFeature, checkLocalServer } = useSettingsStore();
+  const { localUrl, features, localOnline, phoneTracking, setLocalUrl, toggleFeature, setPhoneTracking, checkLocalServer } = useSettingsStore();
   const [urlInput, setUrlInput] = useState(localUrl);
+
+  async function handlePhoneTracking(val) {
+    try {
+      await setPhoneTracking(val);
+    } catch (err) {
+      Alert.alert("Помилка", err.message || "Не вдалося увімкнути трекінг");
+    }
+  }
 
   async function handleLogout() {
     Alert.alert("Вийти", "Ви впевнені?", [
@@ -90,6 +100,26 @@ export default function SettingsScreen() {
             <Text style={s.currentUrl}>
               {localOnline === null ? "Перевірка..." : localOnline ? "Сервер доступний" : "Сервер недоступний"} · {localUrl}
             </Text>
+          </View>
+        </View>
+
+        {/* GPS трекінг телефону */}
+        <View style={s.section}>
+          <Text style={s.sectionTitle}>📍 GPS трекінг телефону</Text>
+          <Text style={s.hint}>Телефон надсилає координати на сервер раз на хвилину</Text>
+          <View style={s.featureRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={s.featureLabel}>Фоновий трекінг</Text>
+              <Text style={s.featureDesc}>
+                {phoneTracking ? "✅ Активний — видно на карті як 📱 Телефон" : "Вимкнено"}
+              </Text>
+            </View>
+            <Switch
+              value={phoneTracking}
+              onValueChange={handlePhoneTracking}
+              trackColor={{ false: "#4b5563", true: "#1d4ed8" }}
+              thumbColor="#fff"
+            />
           </View>
         </View>
 
