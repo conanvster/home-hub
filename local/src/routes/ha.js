@@ -1,4 +1,5 @@
 const router = require("express").Router();
+const HADashboard = require("../models/HADashboard");
 
 const HA_URL = process.env.HA_URL || "http://localhost:8123";
 const HA_TOKEN = process.env.HA_TOKEN || "";
@@ -46,6 +47,32 @@ router.get("/camera/:entityId", async (req, res) => {
     res.send(Buffer.from(await r.arrayBuffer()));
   } catch (err) {
     res.status(500).end();
+  }
+});
+
+// GET /api/ha/dashboard — отримати layout дашборду
+router.get("/dashboard", async (req, res) => {
+  try {
+    let doc = await HADashboard.findById("default");
+    if (!doc) doc = { containers: [] };
+    res.json(doc);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT /api/ha/dashboard — зберегти layout дашборду
+router.put("/dashboard", async (req, res) => {
+  try {
+    const { containers } = req.body;
+    const doc = await HADashboard.findByIdAndUpdate(
+      "default",
+      { containers },
+      { upsert: true, new: true }
+    );
+    res.json(doc);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 

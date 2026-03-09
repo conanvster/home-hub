@@ -103,6 +103,9 @@ export const api = {
   haStates: () => request("/ha/states"),
   haService: (domain, service, data) =>
     request(`/ha/services/${domain}/${service}`, { method: "POST", body: JSON.stringify(data) }),
+  haGetDashboard: () => request("/ha/dashboard"),
+  haUpdateDashboard: (containers) =>
+    request("/ha/dashboard", { method: "PUT", body: JSON.stringify({ containers }) }),
 
   addComment: (taskId, text) =>
     request(`/tasks/${taskId}/comments`, { method: "POST", body: JSON.stringify({ text }) }),

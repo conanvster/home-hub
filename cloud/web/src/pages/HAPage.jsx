@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { api } from "../services/api";
 import AppHeader from "../components/AppHeader";
 
@@ -24,6 +24,7 @@ function entityIcon(state) {
   if (state.entity_id.startsWith("light.")) return "💡";
   if (state.entity_id.startsWith("switch.")) return "🔌";
   if (state.entity_id.startsWith("automation.")) return "⚙️";
+  if (state.entity_id.startsWith("camera.")) return "📷";
   return "📡";
 }
 
@@ -155,17 +156,281 @@ function AutomationCard({ state, onTrigger, triggering }) {
   );
 }
 
-// ── Секція ────────────────────────────────────────────────────
-function Section({ title, children, count }) {
+// ── Мінімальна плитка entity для дашборду ────────────────────
+function DashEntityCard({ state, ts, onToggle, toggling }) {
+  if (!state) return null;
+  const id = state.entity_id;
+
+  if (id.startsWith("camera.")) {
+    const src = `/api/ha/camera/${id}?t=${ts}`;
+    return (
+      <div className="bg-gray-900 border border-gray-700 rounded-lg overflow-hidden">
+        <img src={src} alt={friendlyName(state)} className="w-full aspect-video object-cover" onError={(e) => { e.target.style.display = "none"; }} />
+        <p className="text-white text-xs px-2 py-1 truncate">{friendlyName(state)}</p>
+      </div>
+    );
+  }
+
+  if (id.startsWith("light.") || id.startsWith("switch.")) {
+    const isOn = state.state === "on";
+    return (
+      <div
+        className={`bg-gray-900 border rounded-lg p-3 flex items-center justify-between gap-2 ${
+          isOn ? "border-yellow-600/40" : "border-gray-700"
+        }`}
+      >
+        <div className="flex items-center gap-2 min-w-0">
+          <span className={`text-xl ${isOn ? "" : "opacity-40"}`}>{entityIcon(state)}</span>
+          <p className="text-white text-xs truncate">{friendlyName(state)}</p>
+        </div>
+        <button
+          onClick={() => onToggle(state)}
+          disabled={toggling}
+          className={`relative w-9 h-5 rounded-full transition-colors flex-shrink-0 ${
+            isOn ? "bg-yellow-500" : "bg-gray-600"
+          } disabled:opacity-50`}
+        >
+          <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${
+            isOn ? "translate-x-4" : "translate-x-0.5"
+          }`} />
+        </button>
+      </div>
+    );
+  }
+
+  // sensor / automation / інше
+  const value = state.state;
+  const unit = state.attributes?.unit_of_measurement || "";
+  return (
+    <div className="bg-gray-900 border border-gray-700 rounded-lg p-3 flex items-center gap-2">
+      <span className="text-xl">{entityIcon(state)}</span>
+      <div className="min-w-0">
+        <p className="text-gray-400 text-xs truncate">{friendlyName(state)}</p>
+        <p className="text-white text-sm font-semibold">
+          {isNaN(value) ? value : parseFloat(value).toFixed(1)}
+          {unit && <span className="text-gray-400 text-xs ml-1">{unit}</span>}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ── Секція (згортна) ──────────────────────────────────────────
+function Section({ title, count, children, defaultOpen = true }) {
+  const [open, setOpen] = useState(defaultOpen);
   if (count === 0) return null;
   return (
     <section>
-      <h2 className="text-white font-semibold text-base mb-3 flex items-center gap-2">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center gap-2 text-white font-semibold text-base mb-3 group"
+      >
+        <span className="text-gray-500 text-xs transition-transform" style={{ transform: open ? "rotate(90deg)" : "rotate(0deg)" }}>▶</span>
         {title}
         <span className="text-gray-500 text-xs bg-gray-700 rounded-full px-2 font-normal">{count}</span>
-      </h2>
-      {children}
+      </button>
+      {open && children}
     </section>
+  );
+}
+
+// ── Дашборд ───────────────────────────────────────────────────
+const ENTITY_DND_TYPE = "ha-entity";
+const CONTAINER_DND_TYPE = "ha-container";
+
+function Dashboard({ containers, statesMap, ts, onToggle, toggling, onChange }) {
+  const [editingId, setEditingId] = useState(null);
+  const [editName, setEditName] = useState("");
+  const dragEntity = useRef(null);    // { entityId, fromContainerId }
+  const dragContainer = useRef(null); // containerId
+
+  // Drag entity (within dashboard)
+  function onEntityDragStart(e, entityId, fromContainerId) {
+    dragEntity.current = { entityId, fromContainerId };
+    dragContainer.current = null;
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("type", ENTITY_DND_TYPE);
+    e.dataTransfer.setData("entityId", entityId);
+    e.dataTransfer.setData("fromContainerId", fromContainerId);
+  }
+
+  function onContainerDragStart(e, containerId) {
+    dragContainer.current = containerId;
+    dragEntity.current = null;
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("type", CONTAINER_DND_TYPE);
+  }
+
+  function onDropOnContainer(e, toContainerId) {
+    e.preventDefault();
+    const type = e.dataTransfer.getData("type");
+
+    if (type === ENTITY_DND_TYPE) {
+      const entityId = e.dataTransfer.getData("entityId");
+      const fromContainerId = e.dataTransfer.getData("fromContainerId") || null;
+      dragEntity.current = null;
+      if (!entityId) return;
+      // Already in target container — skip
+      const targetContainer = containers.find((c) => c.id === toContainerId);
+      if (targetContainer?.entities.includes(entityId)) return;
+
+      const next = containers.map((c) => {
+        if (fromContainerId && c.id === fromContainerId)
+          return { ...c, entities: c.entities.filter((x) => x !== entityId) };
+        if (c.id === toContainerId)
+          return { ...c, entities: [...c.entities, entityId] };
+        return c;
+      });
+      onChange(next);
+    }
+  }
+
+  function onDropOnContainerHeader(e, toIdx) {
+    e.preventDefault();
+    const type = e.dataTransfer.getData("type");
+    if (type === CONTAINER_DND_TYPE && dragContainer.current) {
+      const fromIdx = containers.findIndex((c) => c.id === dragContainer.current);
+      dragContainer.current = null;
+      if (fromIdx === -1 || fromIdx === toIdx) return;
+      const next = [...containers];
+      const [moved] = next.splice(fromIdx, 1);
+      next.splice(toIdx, 0, moved);
+      onChange(next);
+    }
+  }
+
+  function addContainer() {
+    const id = `c_${Date.now()}`;
+    onChange([...containers, { id, name: "Контейнер", entities: [] }]);
+  }
+
+  function removeContainer(id) {
+    onChange(containers.filter((c) => c.id !== id));
+  }
+
+  function removeEntity(containerId, entityId) {
+    onChange(containers.map((c) =>
+      c.id === containerId ? { ...c, entities: c.entities.filter((e) => e !== entityId) } : c
+    ));
+  }
+
+  function startRename(c) {
+    setEditingId(c.id);
+    setEditName(c.name);
+  }
+
+  function commitRename(id) {
+    onChange(containers.map((c) => c.id === id ? { ...c, name: editName || c.name } : c));
+    setEditingId(null);
+  }
+
+  return (
+    <section>
+      <div className="flex items-center gap-3 mb-3">
+        <h2 className="text-white font-semibold text-base">🗂️ Дашборд</h2>
+        <button
+          onClick={addContainer}
+          className="text-xs px-2 py-1 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition"
+        >
+          + Контейнер
+        </button>
+      </div>
+
+      {containers.length === 0 && (
+        <p className="text-gray-600 text-sm">Додайте контейнер та перетягніть entities з секцій нижче</p>
+      )}
+
+      <div className="flex flex-wrap gap-4">
+        {containers.map((c, idx) => (
+          <div
+            key={c.id}
+            draggable
+            onDragStart={(e) => onContainerDragStart(e, c.id)}
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={(e) => onDropOnContainerHeader(e, idx)}
+            className="bg-gray-800 border border-gray-700 rounded-xl p-3 min-w-[220px] max-w-[320px] flex-1 flex flex-col gap-2"
+          >
+            {/* Container header */}
+            <div className="flex items-center gap-2 cursor-grab">
+              <span className="text-gray-500 text-xs">⠿</span>
+              {editingId === c.id ? (
+                <input
+                  autoFocus
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  onBlur={() => commitRename(c.id)}
+                  onKeyDown={(e) => e.key === "Enter" && commitRename(c.id)}
+                  className="flex-1 bg-gray-700 text-white text-sm rounded px-2 py-0.5 outline-none"
+                />
+              ) : (
+                <span
+                  className="flex-1 text-white text-sm font-medium truncate cursor-text"
+                  onDoubleClick={() => startRename(c)}
+                  title="Двічі клікніть щоб перейменувати"
+                >
+                  {c.name}
+                </span>
+              )}
+              <button
+                onClick={() => removeContainer(c.id)}
+                className="text-gray-600 hover:text-red-400 text-xs flex-shrink-0"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Drop zone */}
+            <div
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => onDropOnContainer(e, c.id)}
+              className={`flex flex-col gap-2 min-h-[60px] rounded-lg border-2 border-dashed p-1 transition ${
+                c.entities.length === 0 ? "border-gray-700" : "border-transparent"
+              }`}
+            >
+              {c.entities.length === 0 && (
+                <p className="text-gray-600 text-xs text-center py-3">Перетягніть сюди</p>
+              )}
+              {c.entities.map((eid) => {
+                const state = statesMap[eid];
+                return (
+                  <div
+                    key={eid}
+                    draggable
+                    onDragStart={(e) => onEntityDragStart(e, eid, c.id)}
+                    className="relative group cursor-grab active:cursor-grabbing"
+                  >
+                    <DashEntityCard state={state} ts={ts} onToggle={onToggle} toggling={toggling === eid} />
+                    <button
+                      onClick={() => removeEntity(c.id, eid)}
+                      className="absolute top-1 right-1 text-gray-600 hover:text-red-400 text-xs opacity-0 group-hover:opacity-100 transition"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+// ── Перетягувана entity (з секції на дашборд) ─────────────────
+function DraggableEntity({ state, children }) {
+  return (
+    <div
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.effectAllowed = "copy";
+        e.dataTransfer.setData("type", ENTITY_DND_TYPE);
+        e.dataTransfer.setData("entityId", state.entity_id);
+      }}
+      className="cursor-grab active:cursor-grabbing"
+    >
+      {children}
+    </div>
   );
 }
 
@@ -177,6 +442,9 @@ export default function HAPage() {
   const [toggling, setToggling] = useState(null);
   const [triggering, setTriggering] = useState(null);
   const [camTs, setCamTs] = useState(Date.now());
+  const [containers, setContainers] = useState([]);
+  const [dashSaving, setDashSaving] = useState(false);
+  const saveTimer = useRef(null);
 
   const load = useCallback(async () => {
     try {
@@ -192,10 +460,22 @@ export default function HAPage() {
 
   useEffect(() => {
     load();
-    const stateTimer = setInterval(load, 10000);          // стани кожні 10 сек
-    const camTimer = setInterval(() => setCamTs(Date.now()), 30000); // камери кожні 30 сек
+    api.haGetDashboard().then((doc) => setContainers(doc.containers || [])).catch(() => {});
+    const stateTimer = setInterval(load, 10000);
+    const camTimer = setInterval(() => setCamTs(Date.now()), 30000);
     return () => { clearInterval(stateTimer); clearInterval(camTimer); };
   }, [load]);
+
+  // Debounce save
+  function handleContainersChange(next) {
+    setContainers(next);
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(async () => {
+      setDashSaving(true);
+      try { await api.haUpdateDashboard(next); } catch {}
+      setDashSaving(false);
+    }, 800);
+  }
 
   async function toggle(state) {
     setToggling(state.entity_id);
@@ -229,6 +509,8 @@ export default function HAPage() {
   );
   const automations = states.filter((s) => s.entity_id.startsWith("automation."));
 
+  const statesMap = Object.fromEntries(states.map((s) => [s.entity_id, s]));
+
   return (
     <div className="flex flex-col min-h-screen bg-gray-900 text-white">
       <AppHeader activePage="ha" />
@@ -244,11 +526,24 @@ export default function HAPage() {
           </div>
         )}
 
+        {/* ── Дашборд ─────────────────────────────────────────── */}
+        <Dashboard
+          containers={containers}
+          statesMap={statesMap}
+          ts={camTs}
+          onToggle={toggle}
+          toggling={toggling}
+          onChange={handleContainersChange}
+        />
+        {dashSaving && <p className="text-gray-600 text-xs -mt-6">Збереження...</p>}
+
         {/* ── Камери ─────────────────────────────────────────── */}
         <Section title="📷 Камери" count={cameras.length}>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {cameras.map((s) => (
-              <CameraCard key={s.entity_id} state={s} ts={camTs} />
+              <DraggableEntity key={s.entity_id} state={s}>
+                <CameraCard state={s} ts={camTs} />
+              </DraggableEntity>
             ))}
           </div>
         </Section>
@@ -257,12 +552,13 @@ export default function HAPage() {
         <Section title="⚡ Електрика" count={electric.length}>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {electric.map((s) => (
-              <ToggleCard
-                key={s.entity_id}
-                state={s}
-                onToggle={toggle}
-                toggling={toggling === s.entity_id}
-              />
+              <DraggableEntity key={s.entity_id} state={s}>
+                <ToggleCard
+                  state={s}
+                  onToggle={toggle}
+                  toggling={toggling === s.entity_id}
+                />
+              </DraggableEntity>
             ))}
           </div>
         </Section>
@@ -271,7 +567,9 @@ export default function HAPage() {
         <Section title="🌡️ Клімат і сенсори" count={sensors.length}>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
             {sensors.map((s) => (
-              <SensorCard key={s.entity_id} state={s} />
+              <DraggableEntity key={s.entity_id} state={s}>
+                <SensorCard state={s} />
+              </DraggableEntity>
             ))}
           </div>
         </Section>
