@@ -32,14 +32,98 @@ function friendlyName(state) {
   return state.attributes?.friendly_name || state.entity_id;
 }
 
+// ── Popup камери ──────────────────────────────────────────────
+function CameraModal({ state, onClose }) {
+  const [ts, setTs] = useState(Date.now());
+  const [fullscreen, setFullscreen] = useState(false);
+  const containerRef = useRef(null);
+  const entityId = state.entity_id;
+
+  // Оновлення кожні 2 секунди
+  useEffect(() => {
+    const t = setInterval(() => setTs(Date.now()), 2000);
+    return () => clearInterval(t);
+  }, []);
+
+  // Закриття по Escape
+  useEffect(() => {
+    function onKey(e) { if (e.key === "Escape") onClose(); }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  // Fullscreen API
+  function toggleFullscreen() {
+    if (!document.fullscreenElement) {
+      containerRef.current?.requestFullscreen();
+      setFullscreen(true);
+    } else {
+      document.exitFullscreen();
+      setFullscreen(false);
+    }
+  }
+
+  useEffect(() => {
+    function onFsChange() { setFullscreen(!!document.fullscreenElement); }
+    document.addEventListener("fullscreenchange", onFsChange);
+    return () => document.removeEventListener("fullscreenchange", onFsChange);
+  }, []);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div
+        ref={containerRef}
+        className="bg-gray-900 border border-gray-700 rounded-xl shadow-2xl flex flex-col overflow-hidden"
+        style={{ width: "min(90vw, 960px)", resize: "both", minWidth: 320, minHeight: 240 }}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-2 bg-gray-800 border-b border-gray-700 flex-shrink-0">
+          <span className="text-white text-sm font-medium">📷 {friendlyName(state)}</span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={toggleFullscreen}
+              className="text-gray-400 hover:text-white text-sm px-2 py-1 rounded hover:bg-gray-700 transition"
+              title={fullscreen ? "Вийти з повноекранного" : "Повний екран"}
+            >
+              {fullscreen ? "⊡" : "⛶"}
+            </button>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-white text-sm px-2 py-1 rounded hover:bg-gray-700 transition"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+
+        {/* Image */}
+        <div className="flex-1 bg-black overflow-hidden min-h-0">
+          <img
+            key={ts}
+            src={`/api/ha/camera/${entityId}?t=${ts}`}
+            alt={friendlyName(state)}
+            className="w-full h-full object-contain"
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Карта камери ──────────────────────────────────────────────
-function CameraCard({ state, ts }) {
+function CameraCard({ state, ts, onOpen }) {
   const [error, setError] = useState(false);
   const entityId = state.entity_id;
   const src = `/api/ha/camera/${entityId}?t=${ts}`;
 
   return (
-    <div className="bg-gray-800 border border-gray-700 rounded-xl overflow-hidden">
+    <div
+      className="bg-gray-800 border border-gray-700 rounded-xl overflow-hidden cursor-pointer hover:border-gray-500 transition"
+      onClick={onOpen}
+    >
       <div className="relative bg-black aspect-video">
         {!error ? (
           <img
@@ -54,6 +138,9 @@ function CameraCard({ state, ts }) {
             Немає зображення
           </div>
         )}
+        <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition">
+          <span className="bg-black/60 text-white text-xs px-3 py-1.5 rounded-lg">⛶ Розгорнути</span>
+        </div>
       </div>
       <div className="px-3 py-2 flex items-center justify-between">
         <span className="text-white text-sm font-medium">📷 {friendlyName(state)}</span>
@@ -157,14 +244,17 @@ function AutomationCard({ state, onTrigger, triggering }) {
 }
 
 // ── Мінімальна плитка entity для дашборду ────────────────────
-function DashEntityCard({ state, ts, onToggle, toggling }) {
+function DashEntityCard({ state, ts, onToggle, toggling, onOpenCamera }) {
   if (!state) return null;
   const id = state.entity_id;
 
   if (id.startsWith("camera.")) {
     const src = `/api/ha/camera/${id}?t=${ts}`;
     return (
-      <div className="bg-gray-900 border border-gray-700 rounded-lg overflow-hidden">
+      <div
+        className="bg-gray-900 border border-gray-700 rounded-lg overflow-hidden cursor-pointer hover:border-gray-500 transition"
+        onClick={onOpenCamera}
+      >
         <img src={src} alt={friendlyName(state)} className="w-full aspect-video object-cover" onError={(e) => { e.target.style.display = "none"; }} />
         <p className="text-white text-xs px-2 py-1 truncate">{friendlyName(state)}</p>
       </div>
@@ -238,7 +328,7 @@ function Section({ title, count, children, defaultOpen = true }) {
 const ENTITY_DND_TYPE = "ha-entity";
 const CONTAINER_DND_TYPE = "ha-container";
 
-function Dashboard({ containers, statesMap, ts, onToggle, toggling, onChange }) {
+function Dashboard({ containers, statesMap, ts, onToggle, toggling, onChange, onOpenCamera }) {
   const [editingId, setEditingId] = useState(null);
   const [editName, setEditName] = useState("");
   const dragEntity = useRef(null);    // { entityId, fromContainerId }
@@ -399,7 +489,7 @@ function Dashboard({ containers, statesMap, ts, onToggle, toggling, onChange }) 
                     onDragStart={(e) => onEntityDragStart(e, eid, c.id)}
                     className="relative group cursor-grab active:cursor-grabbing"
                   >
-                    <DashEntityCard state={state} ts={ts} onToggle={onToggle} toggling={toggling === eid} />
+                    <DashEntityCard state={state} ts={ts} onToggle={onToggle} toggling={toggling === eid} onOpenCamera={state ? () => onOpenCamera(state) : undefined} />
                     <button
                       onClick={() => removeEntity(c.id, eid)}
                       className="absolute top-1 right-1 text-gray-600 hover:text-red-400 text-xs opacity-0 group-hover:opacity-100 transition"
@@ -442,6 +532,7 @@ export default function HAPage() {
   const [toggling, setToggling] = useState(null);
   const [triggering, setTriggering] = useState(null);
   const [camTs, setCamTs] = useState(Date.now());
+  const [selectedCamera, setSelectedCamera] = useState(null);
   const [containers, setContainers] = useState([]);
   const [dashSaving, setDashSaving] = useState(false);
   const saveTimer = useRef(null);
@@ -462,7 +553,7 @@ export default function HAPage() {
     load();
     api.haGetDashboard().then((doc) => setContainers(doc.containers || [])).catch(() => {});
     const stateTimer = setInterval(load, 10000);
-    const camTimer = setInterval(() => setCamTs(Date.now()), 30000);
+    const camTimer = setInterval(() => setCamTs(Date.now()), 2000);
     return () => { clearInterval(stateTimer); clearInterval(camTimer); };
   }, [load]);
 
@@ -515,6 +606,10 @@ export default function HAPage() {
     <div className="flex flex-col min-h-screen bg-gray-900 text-white">
       <AppHeader activePage="ha" />
 
+      {selectedCamera && (
+        <CameraModal state={selectedCamera} onClose={() => setSelectedCamera(null)} />
+      )}
+
       <div className="flex-1 p-6 max-w-6xl mx-auto w-full flex flex-col gap-8">
         {loading && (
           <div className="text-gray-400 text-sm">Підключення до Home Assistant...</div>
@@ -534,6 +629,7 @@ export default function HAPage() {
           onToggle={toggle}
           toggling={toggling}
           onChange={handleContainersChange}
+          onOpenCamera={setSelectedCamera}
         />
         {dashSaving && <p className="text-gray-600 text-xs -mt-6">Збереження...</p>}
 
@@ -542,7 +638,7 @@ export default function HAPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {cameras.map((s) => (
               <DraggableEntity key={s.entity_id} state={s}>
-                <CameraCard state={s} ts={camTs} />
+                <CameraCard state={s} ts={camTs} onOpen={() => setSelectedCamera(s)} />
               </DraggableEntity>
             ))}
           </div>
