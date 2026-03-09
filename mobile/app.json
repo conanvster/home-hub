@@ -17,6 +17,7 @@
     },
     "android": {
       "package": "ua.com.mytracking.homehub",
+      "usesCleartextTraffic": true,
       "adaptiveIcon": {
         "backgroundColor": "#111827",
         "foregroundImage": "./assets/android-icon-foreground.png"
