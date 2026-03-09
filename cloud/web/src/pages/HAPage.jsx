@@ -233,23 +233,46 @@ function AutomationCard({ state, onTrigger, triggering }) {
   );
 }
 
-// ── Камера дашборду з preload (без мигання) ───────────────────
+// ── Камера дашборду — double buffer (без мигання) ─────────────
 function DashCameraCard({ state, ts, onOpenCamera }) {
-  const [displaySrc, setDisplaySrc] = useState(() => `/api/ha/camera/${state.entity_id}?t=${ts}`);
+  const entityId = state.entity_id;
+  const initSrc = `/api/ha/camera/${entityId}?t=${ts}`;
+
+  // front: індекс видимого буфера (0 або 1)
+  const [front, setFront] = useState(0);
+  const [srcs, setSrcs] = useState([initSrc, initSrc]);
 
   useEffect(() => {
+    const next = `/api/ha/camera/${entityId}?t=${ts}`;
+    const back = front === 0 ? 1 : 0;
     const img = new Image();
-    const next = `/api/ha/camera/${state.entity_id}?t=${ts}`;
-    img.onload = () => setDisplaySrc(next);
+    img.onload = () => {
+      setSrcs((prev) => {
+        const a = [...prev];
+        a[back] = next;
+        return a;
+      });
+      setFront(back);
+    };
     img.src = next;
-  }, [ts, state.entity_id]);
+  }, [ts, entityId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div
       className="bg-gray-900 border border-gray-700 rounded-lg overflow-hidden cursor-pointer hover:border-gray-500 transition"
       onClick={onOpenCamera}
     >
-      <img src={displaySrc} alt={friendlyName(state)} className="w-full aspect-video object-cover" />
+      <div className="relative w-full aspect-video bg-black">
+        {srcs.map((src, i) => (
+          <img
+            key={i}
+            src={src}
+            alt={friendlyName(state)}
+            className="absolute inset-0 w-full h-full object-cover transition-opacity duration-100"
+            style={{ opacity: i === front ? 1 : 0 }}
+          />
+        ))}
+      </div>
       <p className="text-white text-xs px-2 py-1 truncate">{friendlyName(state)}</p>
     </div>
   );
