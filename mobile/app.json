@@ -1,0 +1,47 @@
+{
+  "expo": {
+    "name": "Home Hub",
+    "slug": "home-hub-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#111827"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "ua.com.mytracking.homehub"
+    },
+    "android": {
+      "package": "ua.com.mytracking.homehub",
+      "adaptiveIcon": {
+        "backgroundColor": "#111827",
+        "foregroundImage": "./assets/adaptive-icon.png"
+      },
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "FOREGROUND_SERVICE"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "scheme": "homehub",
+    "plugins": [
+      "expo-router",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Home Hub використовує геолокацію для трекінгу.",
+          "locationAlwaysPermission": "Home Hub використовує фонову геолокацію для трекінгу.",
+          "locationWhenInUsePermission": "Home Hub використовує геолокацію для трекінгу."
+        }
+      ]
+    ]
+  }
+}
