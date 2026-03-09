@@ -43,5 +43,15 @@ definitions:
 pipelines:
   branches:
     main:
-      - step: *build-check
-      - step: *deploy-cloud
+      - step:
+          <<: *build-check
+          condition:
+            changesets:
+              includePaths:
+                - "cloud/**"
+      - step:
+          <<: *deploy-cloud
+          condition:
+            changesets:
+              includePaths:
+                - "cloud/**"
