@@ -146,10 +146,14 @@ export default function KanbanScreen() {
 
   const load = useCallback(async () => {
     try {
+      console.log("Kanban load: fetching tasks and categories");
       const [t, c] = await Promise.all([api.getTasks(), api.getCategories()]);
+      console.log("Kanban tasks:", t?.length, "categories:", c?.length);
       setTasks(t);
       setCategories(c);
-    } catch {}
+    } catch (err) {
+      console.error("Kanban load error:", err.message, err);
+    }
     setLoading(false);
     setRefreshing(false);
   }, []);

@@ -11,6 +11,7 @@ export default function RootLayout() {
   useEffect(() => {
     init();
     initSettings();
+    console.log("App started");
   }, []);
 
   return (

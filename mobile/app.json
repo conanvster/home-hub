@@ -44,6 +44,14 @@
           "locationAlwaysPermission": "Home Hub використовує фонову геолокацію для трекінгу.",
           "locationWhenInUsePermission": "Home Hub використовує геолокацію для трекінгу."
         }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
       ]
     ],
     "extra": {

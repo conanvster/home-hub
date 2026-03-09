@@ -4,7 +4,7 @@ import {
   TouchableOpacity, Modal, ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import MapView, { Marker, Polyline, PROVIDER_DEFAULT } from "react-native-maps";
+import { WebView } from "react-native-webview";
 import { api } from "../../src/services/api";
 
 // ── Утиліти ───────────────────────────────────────────────────
@@ -27,7 +27,50 @@ function formatAge(iso) {
   return `${Math.floor(h / 24)} дн тому`;
 }
 
-// ── Карта з маршрутом ─────────────────────────────────────────
+// ── Leaflet HTML ──────────────────────────────────────────────
+function buildMapHtml(lat, lon, route) {
+  const routeJson = JSON.stringify(route);
+  return `<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body, #map { width: 100%; height: 100%; background: #111827; }
+</style>
+</head>
+<body>
+<div id="map"></div>
+<script>
+  var lat = ${lat}, lon = ${lon};
+  var route = ${routeJson};
+  var map = L.map('map', { zoomControl: true }).setView([lat, lon], 14);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OSM', maxZoom: 19
+  }).addTo(map);
+
+  // Маршрут
+  if (route.length > 1) {
+    var poly = L.polyline(route, { color: '#3b82f6', weight: 4, opacity: 0.9 }).addTo(map);
+    map.fitBounds(poly.getBounds(), { padding: [30, 30] });
+    // Початок
+    L.circleMarker(route[0], {
+      radius: 7, fillColor: '#22c55e', color: '#fff', weight: 2, fillOpacity: 1
+    }).bindPopup('Початок маршруту').addTo(map);
+  }
+
+  // Поточна позиція
+  L.circleMarker([lat, lon], {
+    radius: 10, fillColor: '#3b82f6', color: '#fff', weight: 3, fillOpacity: 1
+  }).bindPopup('Поточна позиція').addTo(map).openPopup();
+</script>
+</body>
+</html>`;
+}
+
+// ── Модалка карти ─────────────────────────────────────────────
 const PERIODS = [
   { label: "1 год",  hours: 1 },
   { label: "6 год",  hours: 6 },
@@ -48,8 +91,8 @@ function TrackerMapModal({ tracker, latestLog, onClose }) {
       const logs = await api.getLogs(tracker.imei, from);
       const coords = logs
         .filter((l) => l.latitude != null && l.longitude != null)
-        .map((l) => ({ latitude: l.latitude, longitude: l.longitude }))
-        .reverse(); // oldest first for polyline
+        .map((l) => [l.latitude, l.longitude])
+        .reverse();
       setRoute(coords);
     } catch {}
     setLoadingRoute(false);
@@ -58,26 +101,21 @@ function TrackerMapModal({ tracker, latestLog, onClose }) {
   useEffect(() => { loadRoute(); }, [loadRoute]);
 
   const hasPosition = latestLog?.latitude != null && latestLog?.longitude != null;
-  const region = hasPosition ? {
-    latitude: latestLog.latitude,
-    longitude: latestLog.longitude,
-    latitudeDelta: 0.02,
-    longitudeDelta: 0.02,
-  } : {
-    latitude: 48.5, longitude: 32.0,
-    latitudeDelta: 5, longitudeDelta: 5,
-  };
+  const lat = hasPosition ? latestLog.latitude : 48.5;
+  const lon = hasPosition ? latestLog.longitude : 32.0;
+
+  const html = buildMapHtml(lat, lon, route);
 
   return (
     <Modal visible animationType="slide" onRequestClose={onClose}>
       <SafeAreaView style={{ flex: 1, backgroundColor: "#111827" }}>
         {/* Header */}
         <View style={ms.header}>
-          <TouchableOpacity onPress={onClose}>
+          <TouchableOpacity onPress={onClose} style={{ width: 40 }}>
             <Text style={ms.close}>✕</Text>
           </TouchableOpacity>
-          <Text style={ms.title}>{tracker.name || tracker.imei}</Text>
-          <View style={{ width: 32 }} />
+          <Text style={ms.title} numberOfLines={1}>{tracker.name || tracker.imei}</Text>
+          <View style={{ width: 40 }} />
         </View>
 
         {/* Period selector */}
@@ -96,52 +134,29 @@ function TrackerMapModal({ tracker, latestLog, onClose }) {
           {loadingRoute && <ActivityIndicator size="small" color="#3b82f6" style={{ marginLeft: 8 }} />}
         </View>
 
-        {/* Map */}
-        <MapView
+        {/* Leaflet map */}
+        <WebView
           style={{ flex: 1 }}
-          provider={PROVIDER_DEFAULT}
-          initialRegion={region}
-          showsUserLocation
-        >
-          {/* Маршрут */}
-          {route.length > 1 && (
-            <Polyline
-              coordinates={route}
-              strokeColor="#3b82f6"
-              strokeWidth={3}
-            />
+          source={{ html }}
+          originWhitelist={["*"]}
+          javaScriptEnabled
+          domStorageEnabled
+          startInLoadingState
+          renderLoading={() => (
+            <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#111827" }}>
+              <ActivityIndicator color="#3b82f6" />
+            </View>
           )}
-          {/* Початок маршруту */}
-          {route.length > 0 && (
-            <Marker coordinate={route[0]} title="Початок">
-              <View style={ms.dotStart} />
-            </Marker>
-          )}
-          {/* Поточна позиція */}
-          {hasPosition && (
-            <Marker
-              coordinate={{ latitude: latestLog.latitude, longitude: latestLog.longitude }}
-              title={tracker.name || tracker.imei}
-              description={formatTime(latestLog.deviceTime)}
-            >
-              <View style={ms.dotCurrent} />
-            </Marker>
-          )}
-        </MapView>
+        />
 
         {/* Info bar */}
-        {latestLog && (
+        {hasPosition && (
           <View style={ms.infoBar}>
             <Text style={ms.infoText}>
-              📍 {latestLog.latitude?.toFixed(5)}, {latestLog.longitude?.toFixed(5)}
-            </Text>
-            <Text style={ms.infoText}>
-              🕐 {formatTime(latestLog.deviceTime)}
+              📍 {lat.toFixed(5)}, {lon.toFixed(5)}
               {latestLog.speed != null ? `  · ${Math.round(latestLog.speed)} км/год` : ""}
             </Text>
-            {route.length > 0 && (
-              <Text style={ms.infoText}>📏 Точок маршруту: {route.length}</Text>
-            )}
+            <Text style={ms.infoText}>🕐 {formatTime(latestLog.deviceTime)}</Text>
           </View>
         )}
       </SafeAreaView>
@@ -247,10 +262,7 @@ export default function TrackingScreen() {
 
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#111827" },
-  card: {
-    backgroundColor: "#1f2937", borderRadius: 12, padding: 16,
-    borderWidth: 1, borderColor: "#374151",
-  },
+  card: { backgroundColor: "#1f2937", borderRadius: 12, padding: 16, borderWidth: 1, borderColor: "#374151" },
   cardHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 },
   dot: { width: 8, height: 8, borderRadius: 4 },
   trackerName: { flex: 1, color: "#fff", fontWeight: "600", fontSize: 15 },
@@ -271,32 +283,18 @@ const ms = StyleSheet.create({
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
     padding: 16, borderBottomWidth: 1, borderBottomColor: "#374151",
   },
-  close: { color: "#9ca3af", fontSize: 20, width: 32 },
+  close: { color: "#9ca3af", fontSize: 20 },
   title: { color: "#fff", fontWeight: "700", fontSize: 16, flex: 1, textAlign: "center" },
   periods: {
     flexDirection: "row", alignItems: "center", gap: 8,
     paddingHorizontal: 16, paddingVertical: 10,
     borderBottomWidth: 1, borderBottomColor: "#374151",
+    backgroundColor: "#1f2937",
   },
-  periodBtn: {
-    paddingHorizontal: 14, paddingVertical: 6,
-    borderRadius: 16, backgroundColor: "#1f2937",
-    borderWidth: 1, borderColor: "#374151",
-  },
-  periodBtnActive: { backgroundColor: "#1d4ed8", borderColor: "#3b82f6" },
+  periodBtn: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 16, backgroundColor: "#374151" },
+  periodBtnActive: { backgroundColor: "#1d4ed8" },
   periodText: { color: "#9ca3af", fontSize: 13 },
   periodTextActive: { color: "#fff", fontWeight: "600" },
-  infoBar: {
-    backgroundColor: "#1f2937", padding: 12, gap: 4,
-    borderTopWidth: 1, borderTopColor: "#374151",
-  },
+  infoBar: { backgroundColor: "#1f2937", padding: 12, gap: 4, borderTopWidth: 1, borderTopColor: "#374151" },
   infoText: { color: "#9ca3af", fontSize: 12 },
-  dotCurrent: {
-    width: 16, height: 16, borderRadius: 8,
-    backgroundColor: "#3b82f6", borderWidth: 3, borderColor: "#fff",
-  },
-  dotStart: {
-    width: 10, height: 10, borderRadius: 5,
-    backgroundColor: "#22c55e", borderWidth: 2, borderColor: "#fff",
-  },
 });

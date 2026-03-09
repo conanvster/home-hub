@@ -137,11 +137,14 @@ export default function HAScreen() {
   const [camTs, setCamTs] = useState(Date.now());
 
   const load = useCallback(async () => {
+    console.log("HA load: localUrl =", localUrl);
     try {
       const data = await api.haStates();
+      console.log("HA states count:", data?.length);
       setStates(data);
       setError(null);
     } catch (err) {
+      console.error("HA load error:", err.message, err);
       setError(err.message);
     } finally {
       setLoading(false);

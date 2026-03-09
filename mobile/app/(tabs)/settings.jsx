@@ -7,6 +7,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { useAuthStore } from "../../src/store/useAuthStore";
 import { useSettingsStore } from "../../src/store/useSettingsStore";
+import DebugPanel from "../../src/components/DebugPanel";
 
 const FEATURES = [
   { key: "tracking", label: "🗺️ Трекінг", desc: "GPS трекінг трекерів" },
@@ -99,7 +100,15 @@ export default function SettingsScreen() {
             </View>
           ))}
         </View>
+
+        {/* Debug */}
+        <View style={s.section}>
+          <Text style={s.sectionTitle}>🐛 Дебаг</Text>
+          <Text style={s.hint}>Логи для діагностики проблем</Text>
+        </View>
       </ScrollView>
+
+      <DebugPanel />
     </SafeAreaView>
   );
 }
