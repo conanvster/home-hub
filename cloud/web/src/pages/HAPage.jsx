@@ -238,24 +238,25 @@ function DashCameraCard({ state, ts, onOpenCamera }) {
   const entityId = state.entity_id;
   const initSrc = `/api/ha/camera/${entityId}?t=${ts}`;
 
-  // front: індекс видимого буфера (0 або 1)
+  // frontRef — для читання в ефекті без stale closure
+  // front state — для рендеру opacity
+  const frontRef = useRef(0);
   const [front, setFront] = useState(0);
   const [srcs, setSrcs] = useState([initSrc, initSrc]);
 
   useEffect(() => {
     const next = `/api/ha/camera/${entityId}?t=${ts}`;
-    const back = front === 0 ? 1 : 0;
+    const back = frontRef.current === 0 ? 1 : 0;
     const img = new Image();
     img.onload = () => {
-      setSrcs((prev) => {
-        const a = [...prev];
-        a[back] = next;
-        return a;
-      });
+      setSrcs((prev) => { const a = [...prev]; a[back] = next; return a; });
+      frontRef.current = back;
       setFront(back);
     };
     img.src = next;
-  }, [ts, entityId]); // eslint-disable-line react-hooks/exhaustive-deps
+    // Скасувати якщо ts змінився до завантаження
+    return () => { img.onload = null; };
+  }, [ts, entityId]);
 
   return (
     <div
@@ -268,7 +269,7 @@ function DashCameraCard({ state, ts, onOpenCamera }) {
             key={i}
             src={src}
             alt={friendlyName(state)}
-            className="absolute inset-0 w-full h-full object-cover transition-opacity duration-100"
+            className="absolute inset-0 w-full h-full object-cover"
             style={{ opacity: i === front ? 1 : 0 }}
           />
         ))}
