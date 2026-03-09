@@ -88,6 +88,11 @@ export const api = {
   haService: (domain, service, data) =>
     localReq(`/ha/services/${domain}/${service}`, { method: "POST", body: JSON.stringify(data) }),
 
+  // ── Chat (cloud) ─────────────────────────────────────────────
+  getChatMessages: (limit = 50) => cloudReq(`/chat/messages?limit=${limit}`),
+  sendChatMessage: (text) =>
+    cloudReq("/chat/messages", { method: "POST", body: JSON.stringify({ text }) }),
+
   // Camera URL — повертає URL (не робить fetch, використовується в Image)
   haCameraUrl: async (entityId) => {
     const base = await getLocalBase();

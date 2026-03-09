@@ -8,12 +8,14 @@ const DEFAULTS = {
     ha: true,
     kanban: true,
     chat: false,
-    files: false,
+    photos: true,
+    files: true,
   },
 };
 
 export const useSettingsStore = create((set, get) => ({
   ...DEFAULTS,
+  localOnline: null, // null = перевіряється, true = доступний, false = недоступний
 
   init: async () => {
     try {
@@ -33,5 +35,21 @@ export const useSettingsStore = create((set, get) => ({
     const next = { ...get(), features };
     set({ features });
     await AsyncStorage.setItem("settings", JSON.stringify(next));
+  },
+
+  checkLocalServer: async () => {
+    const { localUrl } = get();
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 3000);
+      const res = await fetch(`${localUrl}/api/status`, { signal: controller.signal });
+      clearTimeout(timeout);
+      const online = res.ok;
+      set({ localOnline: online });
+      return online;
+    } catch {
+      set({ localOnline: false });
+      return false;
+    }
   },
 }));

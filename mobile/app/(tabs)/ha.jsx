@@ -128,6 +128,7 @@ function AutomationCard({ state, onTrigger, triggering }) {
 // ── Головний екран ────────────────────────────────────────────
 export default function HAScreen() {
   const localUrl = useSettingsStore((s) => s.localUrl);
+  const localOnline = useSettingsStore((s) => s.localOnline);
   const [states, setStates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -199,7 +200,13 @@ export default function HAScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor="#3b82f6" />}
         contentContainerStyle={{ padding: 16, gap: 16 }}
       >
-        {error && <Text style={s.error}>❌ {error}</Text>}
+        {localOnline === false && (
+          <View style={s.offlineBanner}>
+            <Text style={s.offlineText}>📡 Локальний сервер недоступний</Text>
+            <Text style={s.offlineHint}>Перевірте Wi-Fi або адресу сервера в налаштуваннях</Text>
+          </View>
+        )}
+        {error && localOnline !== false && <Text style={s.error}>❌ {error}</Text>}
 
         {/* Камери */}
         <Section title="📷 Камери" count={cameras.length}>
@@ -254,6 +261,9 @@ const s = StyleSheet.create({
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: "#374151" },
   headerTitle: { fontSize: 18, fontWeight: "700", color: "#fff" },
   error: { color: "#f87171", backgroundColor: "#7f1d1d44", padding: 12, borderRadius: 10, fontSize: 13 },
+  offlineBanner: { backgroundColor: "#1c1f2e", borderRadius: 12, padding: 16, borderWidth: 1, borderColor: "#374151", alignItems: "center", gap: 4 },
+  offlineText: { color: "#f59e0b", fontSize: 15, fontWeight: "600" },
+  offlineHint: { color: "#6b7280", fontSize: 12 },
   empty: { color: "#6b7280", textAlign: "center", marginTop: 40, fontSize: 14 },
 
   // Section

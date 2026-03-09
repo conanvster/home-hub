@@ -30,7 +30,10 @@ app.use(express.json());
 app.use((req, res, next) => {
   const origin = req.headers.origin;
   const allowed = [FRONTEND_URL, "http://localhost:5173"];
-  if (origin && allowed.includes(origin)) {
+  if (!origin) {
+    // Mobile app (no origin header)
+    res.header("Access-Control-Allow-Origin", "*");
+  } else if (allowed.includes(origin)) {
     res.header("Access-Control-Allow-Origin", origin);
     res.header("Access-Control-Allow-Credentials", "true");
   }
@@ -55,6 +58,7 @@ app.use("/api/sync", require("./routes/sync"));
 app.use("/api/telegram", require("./routes/telegram"));
 app.use("/api/tasks", require("./routes/tasks"));
 app.use("/api/admin", require("./routes/admin"));
+app.use("/api/chat",  require("./routes/chat"));
 
 // Health check
 app.get("/api/health", (req, res) => {

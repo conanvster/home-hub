@@ -5,6 +5,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { api } from "../../src/services/api";
+import { useSettingsStore } from "../../src/store/useSettingsStore";
 
 const COLUMNS = [
   { key: "idea",        label: "💡 Ідеї" },
@@ -136,6 +137,7 @@ function TaskModal({ task, categories, onClose, onSave, onDelete }) {
 }
 
 export default function KanbanScreen() {
+  const localOnline = useSettingsStore((s) => s.localOnline);
   const [tasks, setTasks] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -205,6 +207,13 @@ export default function KanbanScreen() {
         })}
       </ScrollView>
 
+      {localOnline === false && (
+        <View style={s.offlineBanner}>
+          <Text style={s.offlineText}>📡 Локальний сервер недоступний</Text>
+          <Text style={s.offlineHint}>Канбан доступний тільки в домашній мережі</Text>
+        </View>
+      )}
+
       <ScrollView
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor="#3b82f6" />}
         contentContainerStyle={{ padding: 16, gap: 8 }}
@@ -245,6 +254,9 @@ const s = StyleSheet.create({
   taskCategory: { color: "#3b82f6", fontSize: 11 },
   taskMeta: { color: "#6b7280", fontSize: 11 },
   empty: { color: "#6b7280", textAlign: "center", marginTop: 40, fontSize: 14 },
+  offlineBanner: { backgroundColor: "#1c1f2e", margin: 12, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: "#374151", alignItems: "center", gap: 4 },
+  offlineText: { color: "#f59e0b", fontSize: 14, fontWeight: "600" },
+  offlineHint: { color: "#6b7280", fontSize: 12 },
   // Modal
   modalHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 16, borderBottomWidth: 1, borderBottomColor: "#374151" },
   modalClose: { color: "#9ca3af", fontSize: 18 },

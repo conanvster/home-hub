@@ -66,6 +66,27 @@ export default function TabsLayout() {
           }}
         />
         <TopTabs.Screen
+          name="chat"
+          options={{
+            title: "💬 Чат",
+            href: features.chat ? undefined : null,
+          }}
+        />
+        <TopTabs.Screen
+          name="photos"
+          options={{
+            title: "🖼️ Фото",
+            href: features.photos ? undefined : null,
+          }}
+        />
+        <TopTabs.Screen
+          name="files"
+          options={{
+            title: "📁 Файли",
+            href: features.files ? undefined : null,
+          }}
+        />
+        <TopTabs.Screen
           name="settings"
           options={{ title: "⚙️ Налаштування" }}
         />

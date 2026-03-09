@@ -13,12 +13,15 @@ const FEATURES = [
   { key: "tracking", label: "🗺️ Трекінг", desc: "GPS трекінг трекерів" },
   { key: "ha",       label: "🏡 Дім",      desc: "Home Assistant інтеграція" },
   { key: "kanban",   label: "📋 Канбан",   desc: "Дошка задач" },
+  { key: "chat",     label: "💬 Чат",      desc: "Сімейний чат" },
+  { key: "photos",   label: "🖼️ Фото",     desc: "Immich — фотогалерея" },
+  { key: "files",    label: "📁 Файли",    desc: "Filebrowser — файловий менеджер" },
 ];
 
 export default function SettingsScreen() {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
-  const { localUrl, features, setLocalUrl, toggleFeature } = useSettingsStore();
+  const { localUrl, features, localOnline, setLocalUrl, toggleFeature, checkLocalServer } = useSettingsStore();
   const [urlInput, setUrlInput] = useState(localUrl);
 
   async function handleLogout() {
@@ -39,6 +42,7 @@ export default function SettingsScreen() {
     const url = urlInput.trim().replace(/\/$/, "");
     setLocalUrl(url);
     setUrlInput(url);
+    setTimeout(() => checkLocalServer(), 300);
   }
 
   return (
@@ -78,7 +82,15 @@ export default function SettingsScreen() {
               <Text style={{ color: "#fff", fontWeight: "600" }}>OK</Text>
             </TouchableOpacity>
           </View>
-          <Text style={s.currentUrl}>Поточна: {localUrl}</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 2 }}>
+            <View style={{
+              width: 8, height: 8, borderRadius: 4,
+              backgroundColor: localOnline === null ? "#6b7280" : localOnline ? "#22c55e" : "#f87171",
+            }} />
+            <Text style={s.currentUrl}>
+              {localOnline === null ? "Перевірка..." : localOnline ? "Сервер доступний" : "Сервер недоступний"} · {localUrl}
+            </Text>
+          </View>
         </View>
 
         {/* Функції */}

@@ -7,11 +7,22 @@ import { useSettingsStore } from "../src/store/useSettingsStore";
 export default function RootLayout() {
   const init = useAuthStore((s) => s.init);
   const initSettings = useSettingsStore((s) => s.init);
+  const checkLocalServer = useSettingsStore((s) => s.checkLocalServer);
 
   useEffect(() => {
     init();
-    initSettings();
+    initSettings().then(() => {
+      // Перша перевірка одразу після ініціалізації налаштувань
+      checkLocalServer();
+    });
     console.log("App started");
+
+    // Перевірка кожні 30 секунд
+    const interval = setInterval(() => {
+      checkLocalServer();
+    }, 30000);
+
+    return () => clearInterval(interval);
   }, []);
 
   return (
