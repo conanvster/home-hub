@@ -32,18 +32,11 @@ function friendlyName(state) {
   return state.attributes?.friendly_name || state.entity_id;
 }
 
-// ── Popup камери ──────────────────────────────────────────────
+// ── Popup камери (MJPEG stream) ───────────────────────────────
 function CameraModal({ state, onClose }) {
-  const [ts, setTs] = useState(Date.now());
   const [fullscreen, setFullscreen] = useState(false);
   const containerRef = useRef(null);
   const entityId = state.entity_id;
-
-  // Оновлення кожні 2 секунди
-  useEffect(() => {
-    const t = setInterval(() => setTs(Date.now()), 2000);
-    return () => clearInterval(t);
-  }, []);
 
   // Закриття по Escape
   useEffect(() => {
@@ -56,10 +49,8 @@ function CameraModal({ state, onClose }) {
   function toggleFullscreen() {
     if (!document.fullscreenElement) {
       containerRef.current?.requestFullscreen();
-      setFullscreen(true);
     } else {
       document.exitFullscreen();
-      setFullscreen(false);
     }
   }
 
@@ -99,11 +90,10 @@ function CameraModal({ state, onClose }) {
           </div>
         </div>
 
-        {/* Image */}
+        {/* MJPEG stream — браузер нативно програє потік */}
         <div className="flex-1 bg-black overflow-hidden min-h-0">
           <img
-            key={ts}
-            src={`/api/ha/camera/${entityId}?t=${ts}`}
+            src={`/api/ha/camera-stream/${entityId}`}
             alt={friendlyName(state)}
             className="w-full h-full object-contain"
           />
@@ -243,22 +233,35 @@ function AutomationCard({ state, onTrigger, triggering }) {
   );
 }
 
+// ── Камера дашборду з preload (без мигання) ───────────────────
+function DashCameraCard({ state, ts, onOpenCamera }) {
+  const [displaySrc, setDisplaySrc] = useState(() => `/api/ha/camera/${state.entity_id}?t=${ts}`);
+
+  useEffect(() => {
+    const img = new Image();
+    const next = `/api/ha/camera/${state.entity_id}?t=${ts}`;
+    img.onload = () => setDisplaySrc(next);
+    img.src = next;
+  }, [ts, state.entity_id]);
+
+  return (
+    <div
+      className="bg-gray-900 border border-gray-700 rounded-lg overflow-hidden cursor-pointer hover:border-gray-500 transition"
+      onClick={onOpenCamera}
+    >
+      <img src={displaySrc} alt={friendlyName(state)} className="w-full aspect-video object-cover" />
+      <p className="text-white text-xs px-2 py-1 truncate">{friendlyName(state)}</p>
+    </div>
+  );
+}
+
 // ── Мінімальна плитка entity для дашборду ────────────────────
 function DashEntityCard({ state, ts, onToggle, toggling, onOpenCamera }) {
   if (!state) return null;
   const id = state.entity_id;
 
   if (id.startsWith("camera.")) {
-    const src = `/api/ha/camera/${id}?t=${ts}`;
-    return (
-      <div
-        className="bg-gray-900 border border-gray-700 rounded-lg overflow-hidden cursor-pointer hover:border-gray-500 transition"
-        onClick={onOpenCamera}
-      >
-        <img src={src} alt={friendlyName(state)} className="w-full aspect-video object-cover" onError={(e) => { e.target.style.display = "none"; }} />
-        <p className="text-white text-xs px-2 py-1 truncate">{friendlyName(state)}</p>
-      </div>
-    );
+    return <DashCameraCard state={state} ts={ts} onOpenCamera={onOpenCamera} />;
   }
 
   if (id.startsWith("light.") || id.startsWith("switch.")) {

@@ -1,4 +1,5 @@
 const router = require("express").Router();
+const { Readable } = require("stream");
 const HADashboard = require("../models/HADashboard");
 
 const HA_URL = process.env.HA_URL || "http://localhost:8123";
@@ -45,6 +46,24 @@ router.get("/camera/:entityId", async (req, res) => {
     res.set("Content-Type", r.headers.get("content-type") || "image/jpeg");
     res.set("Cache-Control", "no-store");
     res.send(Buffer.from(await r.arrayBuffer()));
+  } catch (err) {
+    res.status(500).end();
+  }
+});
+
+// GET /api/ha/camera-stream/:entityId — проксі MJPEG потоку камери
+router.get("/camera-stream/:entityId", async (req, res) => {
+  try {
+    const r = await fetch(
+      `${HA_URL}/api/camera_proxy_stream/${req.params.entityId}`,
+      { headers: haHeaders }
+    );
+    if (!r.ok) return res.status(r.status).end();
+    res.set("Content-Type", r.headers.get("content-type") || "multipart/x-mixed-replace");
+    res.set("Cache-Control", "no-store");
+    const nodeStream = Readable.fromWeb(r.body);
+    nodeStream.pipe(res);
+    req.on("close", () => nodeStream.destroy());
   } catch (err) {
     res.status(500).end();
   }
