@@ -217,7 +217,7 @@ export default function HAPage() {
   }
 
   // Групування
-  const cameras    = states.filter((s) => s.entity_id.startsWith("camera."));
+  const cameras    = states.filter((s) => s.entity_id.startsWith("camera.") && s.state !== "unavailable");
   const lights     = states.filter((s) => s.entity_id.startsWith("light."));
   const switches   = states.filter((s) => s.entity_id.startsWith("switch."));
   const electric   = [...lights, ...switches];
