@@ -129,6 +129,10 @@ export const api = {
     request("/chat/messages", { method: "POST", body: JSON.stringify({ text, recipientId: recipientId || null }) }),
   getChatUnread: () => request("/chat/unread"),
 
+  // App settings
+  getSettings: () => request("/settings"),
+  updateSettings: (data) => request("/settings", { method: "PUT", body: JSON.stringify(data) }),
+
   // Local sync trigger
   triggerSync: () => request("/sync/trigger", { method: "POST" }),
 

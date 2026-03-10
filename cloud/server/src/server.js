@@ -73,7 +73,8 @@ app.use("/api/sync", require("./routes/sync"));
 app.use("/api/telegram", require("./routes/telegram"));
 app.use("/api/tasks", require("./routes/tasks"));
 app.use("/api/admin", require("./routes/admin"));
-app.use("/api/chat",  require("./routes/chat"));
+app.use("/api/chat",     require("./routes/chat"));
+app.use("/api/settings", require("./routes/settings"));
 
 // Health check
 app.get("/api/health", (req, res) => {

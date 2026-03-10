@@ -390,10 +390,66 @@ function BackupTab() {
   );
 }
 
+// ── Вкладка: Налаштування ──────────────────────────────────────
+function SettingsTab() {
+  const [apkUrl, setApkUrl] = useState("");
+  const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    api.getSettings().then((s) => setApkUrl(s.apkUrl || "")).catch(console.error);
+  }, []);
+
+  async function save(e) {
+    e.preventDefault();
+    setSaving(true);
+    setSaved(false);
+    try {
+      await api.updateSettings({ apkUrl });
+      setSaved(true);
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-6 max-w-lg">
+      <div className="bg-gray-700/40 rounded-xl p-4 border border-gray-600">
+        <h3 className="text-white font-semibold text-sm mb-3">📲 Пряме посилання на APK</h3>
+        <p className="text-gray-400 text-xs mb-3">
+          Вставте пряме посилання на завантаження .apk файлу. Воно відображається на сторінці Профіль для всіх користувачів.
+        </p>
+        <form onSubmit={save} className="flex flex-col gap-3">
+          <input
+            type="url"
+            value={apkUrl}
+            onChange={(e) => setApkUrl(e.target.value)}
+            placeholder="https://example.com/home-hub.apk"
+            className="bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-blue-500"
+          />
+          <div className="flex items-center gap-3">
+            <button
+              type="submit"
+              disabled={saving}
+              className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm px-4 py-2 rounded-lg transition"
+            >
+              {saving ? "Збереження..." : "Зберегти"}
+            </button>
+            {saved && <span className="text-green-400 text-sm">✅ Збережено</span>}
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 // ── Головна сторінка ──────────────────────────────────────────
 const TABS = [
   { id: "users", label: "Користувачі" },
   { id: "telegram", label: "Telegram лог" },
+  { id: "settings", label: "Налаштування" },
 ];
 
 export default function AdminPage() {
@@ -408,11 +464,11 @@ export default function AdminPage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-900 text-white">
-      <AppHeader activePage="admin" isAdmin={true} logout={logout} />
+      <AppHeader activePage="admin" isAdmin={true} logout={logout} constrained />
 
       {/* Вкладки адмін-контенту */}
-      <div className="border-b border-gray-700 px-6 bg-gray-900">
-        <div className="flex gap-1">
+      <div className="border-b border-gray-700 bg-gray-900">
+        <div className="max-w-[1024px] min-w-[800px] mx-auto px-6 flex gap-1">
           {TABS.map((t) => (
             <button
               key={t.id}
@@ -431,8 +487,11 @@ export default function AdminPage() {
 
       {/* Контент */}
       <div className="p-6">
-        {tab === "users" && <UsersTab />}
-        {tab === "telegram" && <TelegramTab />}
+        <div className="max-w-[1024px] min-w-[800px] mx-auto">
+          {tab === "users" && <UsersTab />}
+          {tab === "telegram" && <TelegramTab />}
+          {tab === "settings" && <SettingsTab />}
+        </div>
       </div>
     </div>
   );

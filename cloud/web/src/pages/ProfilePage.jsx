@@ -1,10 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { api } from "../services/api";
 import { useAuthStore } from "../store/useAuthStore";
 import AppHeader from "../components/AppHeader";
-
-// Посилання на скачування APK — замінити після білду
-const APK_URL = "https://expo.dev/accounts/alex1864/projects/home-hub-mobile/builds";
 
 function ChangePasswordSection() {
   const [current, setCurrent] = useState("");
@@ -139,42 +136,50 @@ function TelegramSection({ me, onMeChange }) {
   );
 }
 
-function AppDownloadSection() {
+function AppDownloadSection({ apkUrl }) {
   return (
     <div className="bg-gray-800 rounded-xl p-5 border border-gray-700">
       <h3 className="text-white font-semibold mb-4">📲 Мобільний додаток</h3>
       <p className="text-gray-400 text-sm mb-4">
         Home Hub для Android — трекінг, Home Assistant, Канбан та чат у вашому телефоні.
       </p>
-      <div className="flex flex-wrap gap-3">
-        <a href={APK_URL} target="_blank" rel="noreferrer"
-          className="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-lg text-sm font-semibold transition flex items-center gap-2">
-          ⬇ Скачати APK (Android)
-        </a>
-      </div>
+      {apkUrl ? (
+        <div className="flex flex-wrap gap-3">
+          <a href={apkUrl} target="_blank" rel="noreferrer"
+            className="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-lg text-sm font-semibold transition flex items-center gap-2">
+            ⬇ Скачати APK (Android)
+          </a>
+        </div>
+      ) : (
+        <p className="text-gray-500 text-sm">Посилання на APK ще не налаштовано адміністратором.</p>
+      )}
       <p className="text-gray-600 text-xs mt-3">
-        Версія 1.0.0 · Для встановлення дозвольте "Невідомі джерела" в налаштуваннях Android
+        Для встановлення дозвольте "Невідомі джерела" в налаштуваннях Android
       </p>
     </div>
   );
 }
 
-export default function ProfilePage({ isAdmin, logout }) {
+export default function ProfilePage() {
   const user = useAuthStore((s) => s.user);
+  const logout = useAuthStore((s) => s.logout);
+  const isAdmin = user?.role === "admin";
   const [me, setMe] = useState(null);
+  const [apkUrl, setApkUrl] = useState("");
 
-  useState(() => {
+  useEffect(() => {
     api.getMe().then(setMe).catch(console.error);
+    api.getSettings().then((s) => setApkUrl(s.apkUrl || "")).catch(console.error);
   }, []);
 
   const roleLabel = { admin: "👑 Адмін", member: "👨‍👩‍👧 Member", viewer: "👁️ Viewer" };
 
   return (
     <div className="flex flex-col h-screen bg-gray-900 text-white">
-      <AppHeader activePage="profile" isAdmin={isAdmin} logout={logout} />
+      <AppHeader activePage="profile" isAdmin={isAdmin} logout={logout} constrained />
 
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-2xl mx-auto p-6 flex flex-col gap-6">
+        <div className="max-w-[1024px] min-w-[800px] mx-auto p-6 flex flex-col gap-6">
           {/* Інфо акаунту */}
           <div className="bg-gray-800 rounded-xl p-5 border border-gray-700 flex items-center gap-4">
             <div className="w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center text-xl font-bold">
@@ -188,7 +193,7 @@ export default function ProfilePage({ isAdmin, logout }) {
 
           <ChangePasswordSection />
           <TelegramSection me={me} onMeChange={() => api.getMe().then(setMe)} />
-          <AppDownloadSection />
+          <AppDownloadSection apkUrl={apkUrl} />
         </div>
       </div>
     </div>

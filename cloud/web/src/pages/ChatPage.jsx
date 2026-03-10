@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { api } from "../services/api";
+import { useAuthStore } from "../store/useAuthStore";
 import AppHeader from "../components/AppHeader";
 
 function UserList({ users, selected, onSelect, unread }) {
@@ -56,8 +57,11 @@ function MessageBubble({ msg, myId }) {
   );
 }
 
-export default function ChatPage({ isAdmin, logout }) {
-  const myId = JSON.parse(localStorage.getItem("auth") || "{}")?.state?.user?._id;
+export default function ChatPage() {
+  const user = useAuthStore((s) => s.user);
+  const logout = useAuthStore((s) => s.logout);
+  const isAdmin = user?.role === "admin";
+  const myId = user?._id || JSON.parse(localStorage.getItem("auth") || "{}")?.state?.user?._id;
 
   const [users, setUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null); // null = загальний чат
@@ -145,9 +149,10 @@ export default function ChatPage({ isAdmin, logout }) {
 
   return (
     <div className="flex flex-col h-screen bg-gray-900 text-white">
-      <AppHeader activePage="chat" isAdmin={isAdmin} logout={logout} />
+      <AppHeader activePage="chat" isAdmin={isAdmin} logout={logout} constrained />
 
       <div className="flex flex-1 overflow-hidden">
+      <div className="max-w-[1024px] min-w-[800px] mx-auto w-full flex overflow-hidden">
         {/* Sidebar */}
         <div className="flex flex-col border-r border-gray-700 w-64 flex-shrink-0">
           <div className="p-3 border-b border-gray-700 flex flex-col gap-2">
@@ -226,6 +231,7 @@ export default function ChatPage({ isAdmin, logout }) {
             </button>
           </div>
         </div>
+      </div>
       </div>
     </div>
   );
