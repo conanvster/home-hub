@@ -557,10 +557,11 @@ export default function KanbanPage() {
   return (
     <div className="flex flex-col min-h-screen bg-gray-900 text-white">
       {/* Хедер */}
-      <AppHeader activePage="kanban" activeTab={null} />
+      <AppHeader activePage="kanban" constrained />
 
       {/* Тулбар */}
-      <div className="flex items-center px-6 py-2 border-b border-gray-800">
+      <div className="border-b border-gray-800">
+      <div className="max-w-[1024px] min-w-[800px] mx-auto px-6 py-2 flex items-center">
         <button
           onClick={() => setShowCats(true)}
           className="text-gray-400 hover:text-white text-xs transition"
@@ -568,13 +569,15 @@ export default function KanbanPage() {
           ⚙ Категорії
         </button>
       </div>
+      </div>
 
       {/* Дошка */}
       <div className="flex-1 overflow-x-auto p-6">
+        <div className="max-w-[1024px] min-w-[800px] mx-auto h-full">
         {loading ? (
           <div className="text-gray-400 text-sm">Завантаження...</div>
         ) : (
-          <div className="flex gap-5 min-w-max h-full">
+          <div className="flex gap-5 h-full">
             {COLUMNS.map((col) => (
               <KanbanColumn
                 key={col.id}
@@ -593,6 +596,7 @@ export default function KanbanPage() {
             ))}
           </div>
         )}
+        </div>
       </div>
 
       {/* Модальне вікно задачі */}
