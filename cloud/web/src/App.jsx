@@ -7,6 +7,7 @@ import MapPage from "./pages/MapPage";
 import AdminPage from "./pages/AdminPage";
 import KanbanPage from "./pages/KanbanPage";
 import HAPage from "./pages/HAPage";
+import LocalAdminPage from "./pages/LocalAdminPage";
 import ChatPage from "./pages/ChatPage";
 import InvitePage from "./pages/InvitePage";
 import ProfilePage from "./pages/ProfilePage";
@@ -27,6 +28,7 @@ export default function App() {
         <Route path="/kanban" element={<KanbanPage />} />
         <Route path="/ha" element={<HAPage />} />
         <Route path="/map" element={<MapPage />} />
+        <Route path="/admin" element={<LocalAdminPage />} />
         <Route path="*" element={<Navigate to="/kanban" replace />} />
       </Routes>
     );

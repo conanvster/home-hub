@@ -26,7 +26,7 @@ export default function AppHeader({ activePage, isAdmin, logout, constrained = f
           <nav className="flex flex-1 h-full">
             <a href="/kanban" className={active(activePage === "kanban" ? activeCls : inactiveCls)}>Канбан</a>
             <a href="/map" className={active(activePage === "map" ? activeCls : inactiveCls)}>Трекінг</a>
-            <a href="/map?tab=admin" className={active(inactiveCls)}>Адмін</a>
+            <a href="/admin" className={active(activePage === "admin" ? activeCls : inactiveCls)}>Адмін</a>
           </nav>
           <a href="/ha" className={active(activePage === "ha" ? activeCls : inactiveCls)}>
             🏡 Дім
