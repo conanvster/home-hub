@@ -112,6 +112,43 @@ router.get("/me", auth, async (req, res) => {
   res.json(user);
 });
 
+// GET /api/auth/accept-invite/:token — перевірити токен запрошення
+router.get("/accept-invite/:token", async (req, res) => {
+  const user = await User.findOne({
+    inviteToken: req.params.token,
+    inviteTokenExpires: { $gt: new Date() },
+    status: "pending",
+  }).select("email role");
+  if (!user) return res.status(400).json({ error: "Посилання недійсне або вже використане" });
+  res.json({ email: user.email, role: user.role });
+});
+
+// POST /api/auth/accept-invite/:token — встановити пароль і активувати
+router.post("/accept-invite/:token", async (req, res) => {
+  const { password } = req.body;
+  if (!password || password.length < 6) return res.status(400).json({ error: "Пароль мінімум 6 символів" });
+
+  const user = await User.findOne({
+    inviteToken: req.params.token,
+    inviteTokenExpires: { $gt: new Date() },
+    status: "pending",
+  });
+  if (!user) return res.status(400).json({ error: "Посилання недійсне або вже використане" });
+
+  user.password = password;
+  user.status = "active";
+  user.inviteToken = null;
+  user.inviteTokenExpires = null;
+  await user.save();
+
+  const token = jwt.sign(
+    { id: user._id, email: user.email, role: user.role },
+    process.env.JWT_SECRET,
+    { expiresIn: "30d" }
+  );
+  res.json({ token, user: { id: user._id, email: user.email, role: user.role } });
+});
+
 // POST /api/auth/push-token — зберегти Expo push token
 router.post("/push-token", auth, async (req, res) => {
   const { token } = req.body;

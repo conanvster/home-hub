@@ -1,7 +1,9 @@
 const express = require("express");
 const router = express.Router();
+const crypto = require("crypto");
 const auth = require("../middleware/auth");
 const User = require("../models/User");
+const { sendInvite } = require("../services/email");
 const TelegramMessage = require("../models/TelegramMessage");
 const Log = require("../models/Log");
 const Tracker = require("../models/Tracker");
@@ -22,10 +24,37 @@ router.get("/users", auth, requireAdmin, async (req, res) => {
   res.json(users);
 });
 
+// POST /api/admin/invite — запросити нового члена сім'ї
+router.post("/invite", auth, requireAdmin, async (req, res) => {
+  try {
+    const { email, role = "member" } = req.body;
+    if (!email) return res.status(400).json({ error: "email required" });
+    if (!["admin", "member", "viewer"].includes(role)) return res.status(400).json({ error: "Invalid role" });
+
+    const existing = await User.findOne({ email });
+    if (existing) return res.status(409).json({ error: "Користувач з таким email вже існує" });
+
+    const token = crypto.randomBytes(32).toString("hex");
+    await User.create({
+      email,
+      password: crypto.randomBytes(16).toString("hex"), // тимчасовий пароль
+      role,
+      status: "pending",
+      inviteToken: token,
+      inviteTokenExpires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 днів
+    });
+
+    await sendInvite(email, token, req.user.email);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // PATCH /api/admin/users/:id — змінити роль
 router.patch("/users/:id", auth, requireAdmin, async (req, res) => {
   const { role } = req.body;
-  if (!["admin", "viewer"].includes(role)) return res.status(400).json({ error: "Invalid role" });
+  if (!["admin", "member", "viewer"].includes(role)) return res.status(400).json({ error: "Invalid role" });
   const user = await User.findByIdAndUpdate(req.params.id, { role }, { new: true }).select("-password");
   if (!user) return res.status(404).json({ error: "User not found" });
   res.json(user);

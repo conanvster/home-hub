@@ -8,6 +8,7 @@ import AdminPage from "./pages/AdminPage";
 import KanbanPage from "./pages/KanbanPage";
 import HAPage from "./pages/HAPage";
 import ChatPage from "./pages/ChatPage";
+import InvitePage from "./pages/InvitePage";
 import { useAuthStore } from "./store/useAuthStore";
 import { IS_LOCAL } from "./config";
 
@@ -32,6 +33,7 @@ export default function App() {
 
   return (
     <Routes>
+      <Route path="/invite" element={<InvitePage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />

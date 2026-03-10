@@ -4,10 +4,18 @@ import { api } from "../services/api";
 import { useAuthStore } from "../store/useAuthStore";
 import AppHeader from "../components/AppHeader";
 
+const ROLE_LABELS = { admin: "👑 Адмін", member: "👨‍👩‍👧 Member", viewer: "👁️ Viewer" };
+const ROLE_COLORS = { admin: "bg-blue-900 text-blue-300", member: "bg-green-900 text-green-300", viewer: "bg-gray-700 text-gray-300" };
+const ROLES = ["admin", "member", "viewer"];
+
 // ── Вкладка: Користувачі ──────────────────────────────────────
 function UsersTab() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState("member");
+  const [inviting, setInviting] = useState(false);
+  const [inviteMsg, setInviteMsg] = useState("");
   const currentUser = useAuthStore((s) => s.user);
 
   async function load() {
@@ -16,9 +24,8 @@ function UsersTab() {
     finally { setLoading(false); }
   }
 
-  async function toggleRole(user) {
-    const newRole = user.role === "admin" ? "viewer" : "admin";
-    await api.adminUpdateUser(user._id, { role: newRole });
+  async function changeRole(user, role) {
+    await api.adminUpdateUser(user._id, { role });
     load();
   }
 
@@ -28,19 +35,76 @@ function UsersTab() {
     load();
   }
 
+  async function sendInvite(e) {
+    e.preventDefault();
+    if (!inviteEmail) return;
+    setInviting(true);
+    setInviteMsg("");
+    try {
+      await api.adminInvite(inviteEmail, inviteRole);
+      setInviteMsg(`✅ Запрошення надіслано на ${inviteEmail}`);
+      setInviteEmail("");
+      load();
+    } catch (err) {
+      setInviteMsg(`❌ ${err.message}`);
+    } finally {
+      setInviting(false);
+    }
+  }
+
   useEffect(() => { load(); }, []);
 
   if (loading) return <div className="text-gray-400 text-sm p-4">Завантаження...</div>;
 
   return (
-    <div className="overflow-x-auto">
+    <div className="flex flex-col gap-6">
+      {/* Форма запрошення */}
+      <div className="bg-gray-700/40 rounded-xl p-4 border border-gray-600">
+        <h3 className="text-white font-semibold text-sm mb-3">➕ Запросити члена сім'ї</h3>
+        <form onSubmit={sendInvite} className="flex flex-wrap gap-2 items-end">
+          <input
+            type="email"
+            value={inviteEmail}
+            onChange={(e) => setInviteEmail(e.target.value)}
+            placeholder="email@example.com"
+            className="bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-blue-500 flex-1 min-w-[200px]"
+            required
+          />
+          <select
+            value={inviteRole}
+            onChange={(e) => setInviteRole(e.target.value)}
+            className="bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-blue-500"
+          >
+            <option value="member">👨‍👩‍👧 Member</option>
+            <option value="viewer">👁️ Viewer</option>
+            <option value="admin">👑 Адмін</option>
+          </select>
+          <button
+            type="submit"
+            disabled={inviting}
+            className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm px-4 py-2 rounded-lg transition"
+          >
+            {inviting ? "Надсилання..." : "Надіслати запрошення"}
+          </button>
+        </form>
+        {inviteMsg && <p className="text-sm mt-2 text-gray-300">{inviteMsg}</p>}
+        <div className="mt-3 text-xs text-gray-500 flex flex-col gap-0.5">
+          <span>👑 Адмін — повний доступ, керування юзерами</span>
+          <span>👨‍👩‍👧 Member — трекінг, HA, канбан, чат, фото (без видалення чужих)</span>
+          <span>👁️ Viewer — тільки перегляд трекінгу</span>
+        </div>
+      </div>
+
+      {/* Таблиця юзерів */}
+      <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
           <tr className="text-gray-400 text-xs uppercase border-b border-gray-700">
             <th className="text-left py-2 px-3">Email</th>
             <th className="text-left py-2 px-3">Роль</th>
+            <th className="text-left py-2 px-3">Статус</th>
             <th className="text-left py-2 px-3">Telegram</th>
-            <th className="text-left py-2 px-3">Дата реєстрації</th>
+            <th className="text-left py-2 px-3">Дата</th>
             <th className="py-2 px-3"></th>
           </tr>
         </thead>
@@ -49,11 +113,14 @@ function UsersTab() {
             <tr key={u._id} className="border-b border-gray-800 hover:bg-gray-800/50">
               <td className="py-2 px-3 text-white">{u.email}</td>
               <td className="py-2 px-3">
-                <span className={`text-xs px-2 py-0.5 rounded-full ${
-                  u.role === "admin" ? "bg-blue-900 text-blue-300" : "bg-gray-700 text-gray-300"
-                }`}>
-                  {u.role}
+                <span className={`text-xs px-2 py-0.5 rounded-full ${ROLE_COLORS[u.role] || ROLE_COLORS.viewer}`}>
+                  {ROLE_LABELS[u.role] || u.role}
                 </span>
+              </td>
+              <td className="py-2 px-3">
+                {u.status === "pending"
+                  ? <span className="text-yellow-400 text-xs">⏳ Очікує</span>
+                  : <span className="text-green-400 text-xs">✓ Активний</span>}
               </td>
               <td className="py-2 px-3">
                 {u.telegramId
@@ -67,13 +134,13 @@ function UsersTab() {
                 <div className="flex gap-2 justify-end">
                   {u._id !== currentUser?.id && (
                     <>
-                      <button
-                        onClick={() => toggleRole(u)}
-                        className="text-xs text-blue-400 hover:text-blue-300"
-                        title={u.role === "admin" ? "Зробити viewer" : "Зробити admin"}
+                      <select
+                        value={u.role}
+                        onChange={(e) => changeRole(u, e.target.value)}
+                        className="text-xs bg-gray-700 border border-gray-600 rounded px-1 py-0.5 text-gray-300 outline-none"
                       >
-                        {u.role === "admin" ? "→ viewer" : "→ admin"}
-                      </button>
+                        {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
+                      </select>
                       <button
                         onClick={() => deleteUser(u)}
                         className="text-xs text-red-400 hover:text-red-300"

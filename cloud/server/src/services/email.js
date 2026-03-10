@@ -51,4 +51,16 @@ async function sendPasswordReset(to, token) {
   );
 }
 
-module.exports = { sendPasswordReset, sendTelegramCode };
+async function sendInvite(to, token, invitedBy) {
+  const url = `${process.env.FRONTEND_URL}/invite?token=${token}`;
+  await sendMail(
+    to,
+    "Запрошення до Home Hub",
+    `<p><strong>${invitedBy}</strong> запрошує вас до <strong>Home Hub</strong> — сімейного центру керування.</p>
+     <p>Натисніть посилання щоб прийняти запрошення та встановити пароль:</p>
+     <p><a href="${url}" style="background:#3b82f6;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;display:inline-block">Прийняти запрошення</a></p>
+     <p style="color:#888;font-size:12px">Посилання дійсне 7 днів. Якщо ви не очікували цього листа — проігноруйте його.</p>`
+  );
+}
+
+module.exports = { sendPasswordReset, sendTelegramCode, sendInvite };

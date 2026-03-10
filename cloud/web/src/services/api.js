@@ -115,6 +115,9 @@ export const api = {
   addCategory: (name) => request("/tasks/categories", { method: "POST", body: JSON.stringify({ name }) }),
   deleteCategory: (name) => request(`/tasks/categories/${encodeURIComponent(name)}`, { method: "DELETE" }),
 
+  adminInvite: (email, role) =>
+    request("/admin/invite", { method: "POST", body: JSON.stringify({ email, role }) }),
+
   // Chat
   getChatUsers: (q) => request(`/chat/users${q ? `?q=${encodeURIComponent(q)}` : ""}`),
   getChatMessages: (recipientId, limit = 50) =>

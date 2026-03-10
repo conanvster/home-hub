@@ -5,7 +5,10 @@ const userSchema = new mongoose.Schema(
   {
     email: { type: String, required: true, unique: true, lowercase: true },
     password: { type: String, required: true },
-    role: { type: String, enum: ["admin", "viewer"], default: "viewer" },
+    role: { type: String, enum: ["admin", "member", "viewer"], default: "member" },
+    status: { type: String, enum: ["active", "pending"], default: "active" },
+    inviteToken: { type: String, default: null },
+    inviteTokenExpires: { type: Date, default: null },
     telegramId: { type: String, default: null },
     resetToken: { type: String, default: null },
     resetTokenExpires: { type: Date, default: null },
