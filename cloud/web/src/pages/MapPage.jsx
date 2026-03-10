@@ -420,52 +420,231 @@ function LocalAdminPanel() {
   );
 }
 
-// ── Панель Трекінг ─────────────────────────────────────────────
-function TrackingPanel({ trackers, latest, selectedImei, onSelect, dateFrom, dateTo, onDateFrom, onDateTo }) {
-  const todayStr = new Date().toISOString().slice(0, 10);
-  return (
-    <div className="flex flex-col gap-3 p-4 h-full overflow-y-auto">
-      <h2 className="font-semibold text-white">Трекінг</h2>
+// ── Ліва панель Трекінг (з вкладками Трекери / Налаштування) ──
+function TrackingPanel({ trackers, latest, selectedImei, onSelect, dateFrom, dateTo, onDateFrom, onDateTo,
+  onTrackersChange, zones, onZonesChange, onPickZone, pendingZoneCoord, clearPendingCoord }) {
 
-      <div className="flex flex-col gap-1">
-        <label className="text-xs text-gray-400 uppercase tracking-wider">Діапазон</label>
-        <input type="date" value={dateFrom} max={todayStr} onChange={(e) => onDateFrom(e.target.value)}
-          className="bg-gray-700 text-white text-xs rounded px-2 py-1" />
-        <input type="date" value={dateTo} max={todayStr} onChange={(e) => onDateTo(e.target.value)}
-          className="bg-gray-700 text-white text-xs rounded px-2 py-1" />
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const [panel, setPanel] = useState("trackers"); // "trackers" | "settings"
+
+  // Settings state
+  const [editId, setEditId] = useState(null);
+  const [editForm, setEditForm] = useState({});
+  const [addForm, setAddForm] = useState({ name: "", imei: "", color: "#3b82f6", active: true });
+  const [adding, setAdding] = useState(false);
+  const [zoneEditId, setZoneEditId] = useState(null);
+  const [zoneEditForm, setZoneEditForm] = useState({});
+  const [addingZone, setAddingZone] = useState(false);
+  const [zoneForm, setZoneForm] = useState({ name: "", lat: "", lng: "", radius: 500, color: "#f59e0b" });
+
+  useEffect(() => {
+    if (pendingZoneCoord) {
+      setZoneForm(f => ({ ...f, lat: pendingZoneCoord.lat.toFixed(6), lng: pendingZoneCoord.lng.toFixed(6) }));
+      clearPendingCoord();
+      setPanel("settings");
+      setAddingZone(true);
+    }
+  }, [pendingZoneCoord]);
+
+  async function saveEdit(id) { await api.updateTracker(id, editForm); setEditId(null); onTrackersChange(); }
+  async function deleteTracker(id) { if (!confirm("Видалити трекер?")) return; await api.deleteTracker(id); onTrackersChange(); }
+  async function addTracker() {
+    if (!addForm.name || !addForm.imei) return;
+    await api.createTracker(addForm);
+    setAddForm({ name: "", imei: "", color: "#3b82f6", active: true }); setAdding(false); onTrackersChange();
+  }
+  async function saveZone() {
+    if (!zoneForm.name || zoneForm.lat === "" || zoneForm.lng === "") return;
+    await api.createZone({ ...zoneForm, lat: Number(zoneForm.lat), lng: Number(zoneForm.lng), radius: Number(zoneForm.radius) });
+    setZoneForm({ name: "", lat: "", lng: "", radius: 500, color: "#f59e0b" }); setAddingZone(false); onZonesChange();
+  }
+  async function saveZoneEdit(id) {
+    await api.updateZone(id, { ...zoneEditForm, lat: Number(zoneEditForm.lat), lng: Number(zoneEditForm.lng), radius: Number(zoneEditForm.radius) });
+    setZoneEditId(null); onZonesChange();
+  }
+  async function deleteZone(id) { if (!confirm("Видалити зону?")) return; await api.deleteZone(id); onZonesChange(); }
+
+  return (
+    <div className="flex flex-col h-full">
+      {/* Мікро-вкладки */}
+      <div className="flex border-b border-gray-700 flex-shrink-0">
+        {[["trackers", "📍 Трекери"], ["settings", "⚙️ Налаштування"]].map(([id, label]) => (
+          <button key={id} onClick={() => setPanel(id)}
+            className={`flex-1 py-2.5 text-xs font-medium transition border-b-2 ${
+              panel === id ? "border-blue-500 text-white" : "border-transparent text-gray-400 hover:text-white"
+            }`}>
+            {label}
+          </button>
+        ))}
       </div>
 
-      <div className="flex flex-col gap-2">
-        <label className="text-xs text-gray-400 uppercase tracking-wider">Трекери</label>
-        {trackers.map((t) => {
-          const pos = latest[t.imei];
-          return (
-            <button
-              key={t.imei}
-              onClick={() => onSelect(t.imei === selectedImei ? null : t.imei)}
-              className={`text-left p-3 rounded-lg transition ${
-                selectedImei === t.imei ? "bg-blue-600" : "bg-gray-700 hover:bg-gray-600"
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: t.color || "#3b82f6" }} />
-                <span className="font-medium text-sm">{t.name}</span>
+      <div className="flex-1 overflow-y-auto p-4">
+        {/* ── Вкладка Трекери ── */}
+        {panel === "trackers" && (
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-gray-400 uppercase tracking-wider">Діапазон</label>
+              <input type="date" value={dateFrom} max={todayStr} onChange={(e) => onDateFrom(e.target.value)}
+                className="bg-gray-700 text-white text-xs rounded px-2 py-1" />
+              <input type="date" value={dateTo} max={todayStr} onChange={(e) => onDateTo(e.target.value)}
+                className="bg-gray-700 text-white text-xs rounded px-2 py-1" />
+            </div>
+            <div className="flex flex-col gap-2">
+              <label className="text-xs text-gray-400 uppercase tracking-wider">Трекери</label>
+              {trackers.map((t) => {
+                const pos = latest[t.imei];
+                return (
+                  <button key={t.imei} onClick={() => onSelect(t.imei === selectedImei ? null : t.imei)}
+                    className={`text-left p-3 rounded-lg transition ${selectedImei === t.imei ? "bg-blue-600" : "bg-gray-700 hover:bg-gray-600"}`}>
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: t.color || "#3b82f6" }} />
+                      <span className="font-medium text-sm">{t.name}</span>
+                    </div>
+                    {pos && <div className="text-xs text-gray-300 mt-1 pl-4">{pos.speed.toFixed(0)} км/г · {new Date(pos.deviceTime).toLocaleString("uk")}</div>}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ── Вкладка Налаштування ── */}
+        {panel === "settings" && (
+          <div className="flex flex-col gap-5">
+            {/* Трекери */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-gray-400 uppercase tracking-wider">Трекери</span>
+                <button onClick={() => setAdding(!adding)} className="text-xs bg-blue-600 hover:bg-blue-500 px-2 py-1 rounded transition">+ Додати</button>
               </div>
-              {pos && (
-                <div className="text-xs text-gray-300 mt-1 pl-4">
-                  {pos.speed.toFixed(0)} км/г · {new Date(pos.deviceTime).toLocaleString("uk")}
+              {adding && (
+                <div className="bg-gray-700 rounded-lg p-3 mb-2 flex flex-col gap-2">
+                  <input placeholder="Назва" value={addForm.name} onChange={(e) => setAddForm({ ...addForm, name: e.target.value })}
+                    className="bg-gray-600 text-white text-xs rounded px-2 py-1.5 w-full" />
+                  <input placeholder="IMEI" value={addForm.imei} onChange={(e) => setAddForm({ ...addForm, imei: e.target.value })}
+                    className="bg-gray-600 text-white text-xs rounded px-2 py-1.5 w-full font-mono" />
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs text-gray-400">Колір</label>
+                    <input type="color" value={addForm.color} onChange={(e) => setAddForm({ ...addForm, color: e.target.value })} className="w-8 h-6 rounded cursor-pointer bg-transparent" />
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={addTracker} className="flex-1 bg-blue-600 hover:bg-blue-500 text-xs py-1.5 rounded">Зберегти</button>
+                    <button onClick={() => setAdding(false)} className="flex-1 bg-gray-600 hover:bg-gray-500 text-xs py-1.5 rounded">Скасувати</button>
+                  </div>
                 </div>
               )}
-            </button>
-          );
-        })}
+              <div className="flex flex-col gap-1.5">
+                {trackers.map((t) => (
+                  <div key={t._id} className="bg-gray-700 rounded-lg p-2.5">
+                    {editId === t._id ? (
+                      <div className="flex flex-col gap-2">
+                        <input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                          className="bg-gray-600 text-white text-xs rounded px-2 py-1 w-full" />
+                        <div className="flex items-center gap-2">
+                          <input type="color" value={editForm.color} onChange={(e) => setEditForm({ ...editForm, color: e.target.value })} className="w-8 h-6 rounded cursor-pointer bg-transparent" />
+                          <label className="text-xs text-gray-400">Активний</label>
+                          <input type="checkbox" checked={editForm.active} onChange={(e) => setEditForm({ ...editForm, active: e.target.checked })} />
+                        </div>
+                        <div className="flex gap-2">
+                          <button onClick={() => saveEdit(t._id)} className="flex-1 bg-blue-600 text-xs py-1 rounded">✓</button>
+                          <button onClick={() => setEditId(null)} className="flex-1 bg-gray-600 text-xs py-1 rounded">✕</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: t.color || "#3b82f6" }} />
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs font-medium text-white truncate">{t.name}</div>
+                          <div className="text-xs text-gray-500 font-mono">{t.imei}</div>
+                        </div>
+                        <button onClick={() => { setEditId(t._id); setEditForm({ name: t.name, color: t.color || "#3b82f6", active: t.active ?? true }); }} className="text-gray-400 hover:text-white text-xs">✏️</button>
+                        <button onClick={() => deleteTracker(t._id)} className="text-gray-400 hover:text-red-400 text-xs">🗑</button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+                {trackers.length === 0 && <div className="text-xs text-gray-500 text-center py-2">Немає трекерів</div>}
+              </div>
+            </div>
+
+            {/* Геозони */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-gray-400 uppercase tracking-wider">Геозони</span>
+                <button onClick={() => setAddingZone(!addingZone)} className="text-xs bg-yellow-600 hover:bg-yellow-500 px-2 py-1 rounded transition">+ Додати</button>
+              </div>
+              {addingZone && (
+                <div className="bg-gray-700 rounded-lg p-3 mb-2 flex flex-col gap-2">
+                  <input placeholder="Назва зони" value={zoneForm.name} onChange={(e) => setZoneForm({ ...zoneForm, name: e.target.value })}
+                    className="bg-gray-600 text-white text-xs rounded px-2 py-1.5 w-full" />
+                  <div className="flex gap-1">
+                    <input placeholder="Lat" value={zoneForm.lat} onChange={(e) => setZoneForm({ ...zoneForm, lat: e.target.value })}
+                      className="bg-gray-600 text-white text-xs rounded px-2 py-1 w-full font-mono" />
+                    <input placeholder="Lng" value={zoneForm.lng} onChange={(e) => setZoneForm({ ...zoneForm, lng: e.target.value })}
+                      className="bg-gray-600 text-white text-xs rounded px-2 py-1 w-full font-mono" />
+                  </div>
+                  <button onClick={onPickZone} className="text-xs bg-gray-600 hover:bg-gray-500 py-1.5 rounded transition">📍 Вибрати на карті</button>
+                  <input type="number" placeholder="Радіус (м)" value={zoneForm.radius} onChange={(e) => setZoneForm({ ...zoneForm, radius: e.target.value })}
+                    className="bg-gray-600 text-white text-xs rounded px-2 py-1 w-full" />
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs text-gray-400">Колір</label>
+                    <input type="color" value={zoneForm.color} onChange={(e) => setZoneForm({ ...zoneForm, color: e.target.value })} className="w-8 h-6 rounded cursor-pointer bg-transparent" />
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={saveZone} className="flex-1 bg-yellow-600 hover:bg-yellow-500 text-xs py-1.5 rounded">Зберегти</button>
+                    <button onClick={() => setAddingZone(false)} className="flex-1 bg-gray-600 hover:bg-gray-500 text-xs py-1.5 rounded">Скасувати</button>
+                  </div>
+                </div>
+              )}
+              <div className="flex flex-col gap-1.5">
+                {zones.map((z) => (
+                  <div key={z._id} className="bg-gray-700 rounded-lg p-2.5">
+                    {zoneEditId === z._id ? (
+                      <div className="flex flex-col gap-2">
+                        <input value={zoneEditForm.name} onChange={(e) => setZoneEditForm({ ...zoneEditForm, name: e.target.value })}
+                          className="bg-gray-600 text-white text-xs rounded px-2 py-1 w-full" />
+                        <div className="flex gap-1">
+                          <input placeholder="Lat" value={zoneEditForm.lat} onChange={(e) => setZoneEditForm({ ...zoneEditForm, lat: e.target.value })}
+                            className="bg-gray-600 text-white text-xs rounded px-2 py-1 w-full font-mono" />
+                          <input placeholder="Lng" value={zoneEditForm.lng} onChange={(e) => setZoneEditForm({ ...zoneEditForm, lng: e.target.value })}
+                            className="bg-gray-600 text-white text-xs rounded px-2 py-1 w-full font-mono" />
+                        </div>
+                        <input type="number" value={zoneEditForm.radius} onChange={(e) => setZoneEditForm({ ...zoneEditForm, radius: e.target.value })}
+                          className="bg-gray-600 text-white text-xs rounded px-2 py-1 w-full" />
+                        <div className="flex items-center gap-2">
+                          <label className="text-xs text-gray-400">Колір</label>
+                          <input type="color" value={zoneEditForm.color} onChange={(e) => setZoneEditForm({ ...zoneEditForm, color: e.target.value })} className="w-8 h-6 rounded cursor-pointer bg-transparent" />
+                        </div>
+                        <div className="flex gap-2">
+                          <button onClick={() => saveZoneEdit(z._id)} className="flex-1 bg-yellow-600 text-xs py-1 rounded">✓</button>
+                          <button onClick={() => setZoneEditId(null)} className="flex-1 bg-gray-600 text-xs py-1 rounded">✕</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: z.color }} />
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs font-medium text-white truncate">{z.name}</div>
+                          <div className="text-xs text-gray-500">{z.radius} м</div>
+                        </div>
+                        <button onClick={() => { setZoneEditId(z._id); setZoneEditForm({ name: z.name, lat: z.lat, lng: z.lng, radius: z.radius, color: z.color }); }} className="text-gray-400 hover:text-white text-xs">✏️</button>
+                        <button onClick={() => deleteZone(z._id)} className="text-gray-400 hover:text-red-400 text-xs">🗑</button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+                {zones.length === 0 && <div className="text-xs text-gray-500 text-center py-2">Немає зон</div>}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-// ── Telegram секція ────────────────────────────────────────────
-function TelegramSection({ me, onMeChange }) {
+// ── (TelegramSection переміщено в ProfilePage) ─────────────────
+function _TelegramSection({ me, onMeChange }) {
   const [linkCode, setLinkCode] = useState(null);
   const [loading, setLoading] = useState(false);
   const [unlinkLoading, setUnlinkLoading] = useState(false);
@@ -542,8 +721,8 @@ function TelegramSection({ me, onMeChange }) {
   );
 }
 
-// ── Панель Налаштування (повноекранна) ─────────────────────────
-function SettingsPanel({ trackers, onTrackersChange, zones, onZonesChange, onPickZone, pendingZoneCoord, clearPendingCoord, me, onMeChange }) {
+// ── (SettingsPanel переміщено в TrackingPanel) ─────────────────
+function _SettingsPanel({ trackers, onTrackersChange, zones, onZonesChange, onPickZone, pendingZoneCoord, clearPendingCoord, me, onMeChange }) {
   const [editId, setEditId] = useState(null);
   const [editForm, setEditForm] = useState({});
   const [addForm, setAddForm] = useState({ name: "", imei: "", color: "#3b82f6", active: true });
@@ -783,6 +962,8 @@ export default function MapPage() {
   const [me, setMe] = useState(null);
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "tracking");
+  // settings tab більше не існує — редірект на tracking
+
   const logout = useAuthStore((s) => s.logout);
 
   const todayStr = new Date().toISOString().slice(0, 10);
@@ -823,14 +1004,12 @@ export default function MapPage() {
 
   function handlePickZone() {
     setPickingZone(true);
-    setActiveTab("tracking");
   }
 
   function handleMapClick(latlng) {
     if (!pickingZone) return;
     setPendingZoneCoord(latlng);
     setPickingZone(false);
-    setActiveTab("settings");
   }
 
   const selectedTracker = trackers.find((t) => t.imei === selectedImei);
@@ -847,8 +1026,6 @@ export default function MapPage() {
     <div className="flex flex-col h-screen bg-gray-900 text-white">
       <AppHeader
         activePage="map"
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
         isAdmin={!IS_LOCAL && me?.role === "admin"}
         logout={logout}
       />
@@ -867,6 +1044,12 @@ export default function MapPage() {
                 dateTo={dateTo}
                 onDateFrom={setDateFrom}
                 onDateTo={setDateTo}
+                onTrackersChange={loadTrackers}
+                zones={zones}
+                onZonesChange={loadZones}
+                onPickZone={handlePickZone}
+                pendingZoneCoord={pendingZoneCoord}
+                clearPendingCoord={() => setPendingZoneCoord(null)}
               />
             </div>
             <div className="flex-1">
@@ -924,22 +1107,6 @@ export default function MapPage() {
           </div>
         )}
 
-        {/* Налаштування: повноекранний */}
-        {activeTab === "settings" && (
-          <div className="h-full overflow-y-auto">
-            <SettingsPanel
-              trackers={trackers}
-              onTrackersChange={loadTrackers}
-              zones={zones}
-              onZonesChange={loadZones}
-              onPickZone={handlePickZone}
-              pendingZoneCoord={pendingZoneCoord}
-              clearPendingCoord={() => setPendingZoneCoord(null)}
-              me={me}
-              onMeChange={loadMe}
-            />
-          </div>
-        )}
       </div>
     </div>
   );

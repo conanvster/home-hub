@@ -68,55 +68,19 @@ export default function AppHeader({ activePage, activeTab, onTabChange, isAdmin,
   }
 
   // ── Хмарний режим ────────────────────────────────────────────
-  const cloudTabs = [
-    { id: "tracking",  label: "Трекінг" },
-    { id: "settings",  label: "Налаштування" },
-  ];
-
   return (
     <header className="flex items-center bg-gray-800 border-b border-gray-700 px-4 h-12 flex-shrink-0">
-      <span className="font-bold text-white mr-6 text-sm whitespace-nowrap">🏠 Home Hub</span>
+      <a href="/" className="font-bold text-white mr-6 text-sm whitespace-nowrap">🏠 Home Hub</a>
       <nav className="flex flex-1 h-full">
-        {activePage === "map" ? (
-          // На MapPage — таби як кнопки
-          cloudTabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => onTabChange?.(tab.id)}
-              className={active(activeTab === tab.id ? activeCls : inactiveCls)}
-            >
-              {tab.label}
-            </button>
-          ))
-        ) : (
-          // На інших сторінках — посилання назад
-          cloudTabs.map((tab) => (
-            <a
-              key={tab.id}
-              href={tab.id === "settings" ? "/?tab=settings" : "/"}
-              className={active(inactiveCls)}
-            >
-              {tab.label}
-            </a>
-          ))
-        )}
+        <a href="/" className={active(activePage === "map" ? activeCls : inactiveCls)}>Трекінг</a>
         {isAdmin && (
-          <a
-            href="/admin"
-            className={active(activePage === "admin" ? activeCls : inactiveCls)}
-          >
-            Адмін
-          </a>
+          <a href="/admin" className={active(activePage === "admin" ? activeCls : inactiveCls)}>Адмін</a>
         )}
-        <a href="/chat" className={active(activePage === "chat" ? activeCls : inactiveCls)}>
-          💬 Чат
-        </a>
+        <a href="/chat" className={active(activePage === "chat" ? activeCls : inactiveCls)}>💬 Чат</a>
+        <a href="/profile" className={active(activePage === "profile" ? activeCls : inactiveCls)}>👤 Профіль</a>
       </nav>
       <span className="text-gray-600 text-xs font-mono mx-3 whitespace-nowrap hidden sm:inline">{VERSION}</span>
-      <button
-        onClick={logout}
-        className="text-gray-400 hover:text-white text-sm px-3 transition whitespace-nowrap"
-      >
+      <button onClick={logout} className="text-gray-400 hover:text-white text-sm px-3 transition whitespace-nowrap">
         Вийти
       </button>
     </header>

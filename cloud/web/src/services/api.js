@@ -115,6 +115,9 @@ export const api = {
   addCategory: (name) => request("/tasks/categories", { method: "POST", body: JSON.stringify({ name }) }),
   deleteCategory: (name) => request(`/tasks/categories/${encodeURIComponent(name)}`, { method: "DELETE" }),
 
+  changePassword: (currentPassword, newPassword) =>
+    request("/auth/change-password", { method: "POST", body: JSON.stringify({ currentPassword, newPassword }) }),
+
   adminInvite: (email, role) =>
     request("/admin/invite", { method: "POST", body: JSON.stringify({ email, role }) }),
 

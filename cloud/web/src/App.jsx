@@ -9,6 +9,7 @@ import KanbanPage from "./pages/KanbanPage";
 import HAPage from "./pages/HAPage";
 import ChatPage from "./pages/ChatPage";
 import InvitePage from "./pages/InvitePage";
+import ProfilePage from "./pages/ProfilePage";
 import { useAuthStore } from "./store/useAuthStore";
 import { IS_LOCAL } from "./config";
 

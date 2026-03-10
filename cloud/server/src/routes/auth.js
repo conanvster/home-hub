@@ -149,6 +149,25 @@ router.post("/accept-invite/:token", async (req, res) => {
   res.json({ token, user: { id: user._id, email: user.email, role: user.role } });
 });
 
+// POST /api/auth/change-password
+router.post("/change-password", auth, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) return res.status(400).json({ error: "Всі поля обов'язкові" });
+    if (newPassword.length < 6) return res.status(400).json({ error: "Новий пароль мінімум 6 символів" });
+
+    const user = await User.findById(req.user.id);
+    if (!user || !(await user.comparePassword(currentPassword))) {
+      return res.status(400).json({ error: "Поточний пароль невірний" });
+    }
+    user.password = newPassword;
+    await user.save();
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // POST /api/auth/push-token — зберегти Expo push token
 router.post("/push-token", auth, async (req, res) => {
   const { token } = req.body;
