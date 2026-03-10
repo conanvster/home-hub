@@ -637,7 +637,7 @@ export default function HAPage() {
         <CameraModal state={selectedCamera} onClose={() => setSelectedCamera(null)} />
       )}
 
-      <div className="flex-1 p-6 max-w-6xl mx-auto w-full flex flex-col gap-8">
+      <div className="flex-1 p-6 max-w-[1024px] min-w-[800px] mx-auto w-full flex flex-col gap-8">
         {loading && (
           <div className="text-gray-400 text-sm">Підключення до Home Assistant...</div>
         )}
