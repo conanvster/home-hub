@@ -115,6 +115,14 @@ export const api = {
   addCategory: (name) => request("/tasks/categories", { method: "POST", body: JSON.stringify({ name }) }),
   deleteCategory: (name) => request(`/tasks/categories/${encodeURIComponent(name)}`, { method: "DELETE" }),
 
+  // Chat
+  getChatUsers: (q) => request(`/chat/users${q ? `?q=${encodeURIComponent(q)}` : ""}`),
+  getChatMessages: (recipientId, limit = 50) =>
+    request(`/chat/messages?limit=${limit}${recipientId ? `&recipientId=${recipientId}` : ""}`),
+  sendChatMessage: (text, recipientId) =>
+    request("/chat/messages", { method: "POST", body: JSON.stringify({ text, recipientId: recipientId || null }) }),
+  getChatUnread: () => request("/chat/unread"),
+
   // Local sync trigger
   triggerSync: () => request("/sync/trigger", { method: "POST" }),
 

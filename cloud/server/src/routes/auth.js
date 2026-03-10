@@ -112,4 +112,12 @@ router.get("/me", auth, async (req, res) => {
   res.json(user);
 });
 
+// POST /api/auth/push-token — зберегти Expo push token
+router.post("/push-token", auth, async (req, res) => {
+  const { token } = req.body;
+  if (!token) return res.status(400).json({ error: "token required" });
+  await User.findByIdAndUpdate(req.user.id, { expoPushToken: token });
+  res.json({ ok: true });
+});
+
 module.exports = router;

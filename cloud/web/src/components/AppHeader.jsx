@@ -108,6 +108,9 @@ export default function AppHeader({ activePage, activeTab, onTabChange, isAdmin,
             Адмін
           </a>
         )}
+        <a href="/chat" className={active(activePage === "chat" ? activeCls : inactiveCls)}>
+          💬 Чат
+        </a>
       </nav>
       <span className="text-gray-600 text-xs font-mono mx-3 whitespace-nowrap hidden sm:inline">{VERSION}</span>
       <button

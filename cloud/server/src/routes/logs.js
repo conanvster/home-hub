@@ -2,6 +2,7 @@ const router = require("express").Router();
 const auth = require("../middleware/auth");
 const Log = require("../models/Log");
 const Tracker = require("../models/Tracker");
+const { checkZones } = require("../services/geofence");
 
 // GET /api/logs?imei=&from=&to=&limit=
 router.get("/", auth, async (req, res) => {
@@ -62,6 +63,9 @@ router.post("/phone", auth, async (req, res) => {
       speed: speed ? Math.round(speed * 3.6) : 0, // m/s → km/h
       deviceTime: new Date(),
     });
+
+    // Перевірка геозон (Telegram + Push нотифікації)
+    checkZones(log).catch((e) => console.error("[Phone geofence]", e.message));
 
     res.status(201).json(log);
   } catch (err) {

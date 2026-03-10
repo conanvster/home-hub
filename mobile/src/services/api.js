@@ -93,9 +93,12 @@ export const api = {
     cloudReq("/logs/phone", { method: "POST", body: JSON.stringify({ latitude, longitude, speed, accuracy }) }),
 
   // ── Chat (cloud) ─────────────────────────────────────────────
-  getChatMessages: (limit = 50) => cloudReq(`/chat/messages?limit=${limit}`),
-  sendChatMessage: (text) =>
-    cloudReq("/chat/messages", { method: "POST", body: JSON.stringify({ text }) }),
+  getChatUsers: (q) => cloudReq(`/chat/users${q ? `?q=${encodeURIComponent(q)}` : ""}`),
+  getChatMessages: (recipientId, limit = 50) =>
+    cloudReq(`/chat/messages?limit=${limit}${recipientId ? `&recipientId=${recipientId}` : ""}`),
+  sendChatMessage: (text, recipientId) =>
+    cloudReq("/chat/messages", { method: "POST", body: JSON.stringify({ text, recipientId: recipientId || null }) }),
+  getChatUnread: () => cloudReq("/chat/unread"),
 
   // Camera URL — повертає URL (не робить fetch, використовується в Image)
   haCameraUrl: async (entityId) => {

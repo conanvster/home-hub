@@ -17,9 +17,24 @@ const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
 
 // Socket.io (real-time)
 const io = new Server(httpServer, {
-  cors: { origin: FRONTEND_URL, credentials: true },
+  cors: { origin: "*", credentials: false },
 });
 app.set("io", io);
+
+const jwt = require("jsonwebtoken");
+io.use((socket, next) => {
+  const token = socket.handshake.auth?.token;
+  if (!token) return next(); // дозволяємо анонімне підключення для сумісності
+  try {
+    socket.user = jwt.verify(token, process.env.JWT_SECRET);
+  } catch {}
+  next();
+});
+io.on("connection", (socket) => {
+  if (socket.user?.id) {
+    socket.join(`user:${socket.user.id}`);
+  }
+});
 
 // Middleware
 app.use(helmet());

@@ -5,6 +5,14 @@ const Tracker = require("../models/Tracker");
 const User = require("../models/User");
 const { queueMsg, mapsLink } = require("./telegram");
 
+async function sendPushNotification(token, { title, body, data }) {
+  await fetch("https://exp.host/--/api/v2/push/send", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ to: token, title, body, data, sound: "default" }),
+  });
+}
+
 // Haversine — відстань між двома точками в метрах
 function distanceMeters(lat1, lng1, lat2, lng2) {
   const R = 6372795;
@@ -64,16 +72,26 @@ async function checkZones(log) {
         lng: log.longitude,
       });
 
+      const emoji = isNowInside ? "🟢" : "🔴";
+      const action = isNowInside ? "в'їхав у зону" : "виїхав із зону";
+      const link = mapsLink(log.latitude, log.longitude);
+
       // Telegram повідомлення
       if (user?.telegramId) {
-        const emoji = isNowInside ? "🟢" : "🔴";
-        const action = isNowInside ? "в'їхав у зону" : "виїхав із зони";
-        const link = mapsLink(log.latitude, log.longitude);
         queueMsg(user.telegramId,
           `${emoji} *${tracker.name}* ${action} *${zone.name}*\n` +
           `[📍 Google Maps](${link})`,
           { type: "geofence", imei: tracker.imei, zone: zone.name, event }
         );
+      }
+
+      // Expo Push нотифікація
+      if (user?.expoPushToken) {
+        sendPushNotification(user.expoPushToken, {
+          title: `${emoji} ${tracker.name}`,
+          body: `${action} "${zone.name}"`,
+          data: { type: "geofence", imei: tracker.imei, zone: zone.name, event },
+        }).catch((e) => console.error("[Push] error:", e.message));
       }
     }
   } catch (err) {

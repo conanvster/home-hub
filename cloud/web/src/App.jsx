@@ -7,6 +7,7 @@ import MapPage from "./pages/MapPage";
 import AdminPage from "./pages/AdminPage";
 import KanbanPage from "./pages/KanbanPage";
 import HAPage from "./pages/HAPage";
+import ChatPage from "./pages/ChatPage";
 import { useAuthStore } from "./store/useAuthStore";
 import { IS_LOCAL } from "./config";
 
@@ -37,6 +38,7 @@ export default function App() {
       <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/" element={<PrivateRoute><MapPage /></PrivateRoute>} />
       <Route path="/admin" element={<PrivateRoute><AdminPage /></PrivateRoute>} />
+      <Route path="/chat" element={<PrivateRoute><ChatPage /></PrivateRoute>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

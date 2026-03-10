@@ -154,11 +154,12 @@ export default function HAScreen() {
   }, []);
 
   useEffect(() => {
+    if (localOnline === false) return; // не поллити якщо сервер офлайн
     load();
     const stateTimer = setInterval(load, 10000);
     const camTimer = setInterval(() => setCamTs(Date.now()), 5000);
     return () => { clearInterval(stateTimer); clearInterval(camTimer); };
-  }, [load]);
+  }, [load, localOnline]);
 
   async function toggle(state) {
     setToggling(state.entity_id);
