@@ -629,7 +629,7 @@ export default function MapPage() {
 
   return (
     <div className="flex flex-col h-screen bg-gray-900 text-white">
-      <AppHeader activePage="map" />
+      <AppHeader activePage="map" constrained />
 
       <div className="flex-1 overflow-hidden">
         <div className="flex h-full">
