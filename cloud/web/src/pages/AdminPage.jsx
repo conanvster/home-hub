@@ -156,6 +156,7 @@ function UsersTab() {
         </tbody>
       </table>
     </div>
+    </div>
   );
 }
 
