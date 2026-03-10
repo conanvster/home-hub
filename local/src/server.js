@@ -4,22 +4,27 @@ const cors = require("cors");
 const cron = require("node-cron");
 const { connect } = require("./config/mongo");
 const { syncFromCloud } = require("./services/sync");
+const auth = require("./middleware/auth");
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-app.use("/api/logs", require("./routes/logs"));
-app.use("/api/trackers", require("./routes/trackers"));
+// Публічні routes
+app.use("/api/auth",   require("./routes/auth"));
 app.use("/api/status", require("./routes/status"));
-app.use("/api/zones", require("./routes/zones"));
-app.use("/api/sync", require("./routes/sync"));
-app.use("/api/telegram", require("./routes/telegram"));
-app.use("/api/users", require("./routes/users"));
-app.use("/api/backup", require("./routes/backup"));
-app.use("/api/push", require("./routes/push"));
-app.use("/api/tasks", require("./routes/tasks"));
-app.use("/api/ha", require("./routes/ha"));
+app.use("/api/sync",   require("./routes/sync")); // sync secret auth всередині
+
+// Захищені routes (JWT)
+app.use("/api/logs",     auth, require("./routes/logs"));
+app.use("/api/trackers", auth, require("./routes/trackers"));
+app.use("/api/zones",    auth, require("./routes/zones"));
+app.use("/api/telegram", auth, require("./routes/telegram"));
+app.use("/api/users",    auth, require("./routes/users"));
+app.use("/api/backup",   auth, require("./routes/backup"));
+app.use("/api/push",     auth, require("./routes/push"));
+app.use("/api/tasks",    auth, require("./routes/tasks"));
+app.use("/api/ha",       auth, require("./routes/ha"));
 
 const PORT = process.env.PORT || 3002;
 const SYNC_CRON = process.env.SYNC_CRON || "0 * * * *";
@@ -30,7 +35,7 @@ app.get("/api/version", (req, res) => res.json({ version: VERSION }));
 async function main() {
   await connect();
 
-  // Sync при старті (логи + трекери + зони)
+  // Sync при старті
   await syncFromCloud().catch(console.error);
 
   // Cron розклад

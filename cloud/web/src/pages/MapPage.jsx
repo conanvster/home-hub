@@ -570,7 +570,6 @@ export default function MapPage() {
   const [pickingZone, setPickingZone] = useState(false);
   const [me, setMe] = useState(null);
 
-  const logout = useAuthStore((s) => s.logout);
 
   const todayStr = new Date().toISOString().slice(0, 10);
   const [dateFrom, setDateFrom] = useState(todayStr);
@@ -630,11 +629,7 @@ export default function MapPage() {
 
   return (
     <div className="flex flex-col h-screen bg-gray-900 text-white">
-      <AppHeader
-        activePage="map"
-        isAdmin={!IS_LOCAL && me?.role === "admin"}
-        logout={logout}
-      />
+      <AppHeader activePage="map" />
 
       <div className="flex-1 overflow-hidden">
         <div className="flex h-full">

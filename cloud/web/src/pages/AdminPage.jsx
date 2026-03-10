@@ -455,7 +455,6 @@ const TABS = [
 export default function AdminPage() {
   const [tab, setTab] = useState("users");
   const user = useAuthStore((s) => s.user);
-  const logout = useAuthStore((s) => s.logout);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -464,7 +463,7 @@ export default function AdminPage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-900 text-white">
-      <AppHeader activePage="admin" isAdmin={true} logout={logout} constrained />
+      <AppHeader activePage="admin" constrained />
 
       {/* Вкладки адмін-контенту */}
       <div className="border-b border-gray-700 bg-gray-900">

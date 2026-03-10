@@ -162,8 +162,6 @@ function AppDownloadSection({ apkUrl }) {
 
 export default function ProfilePage() {
   const user = useAuthStore((s) => s.user);
-  const logout = useAuthStore((s) => s.logout);
-  const isAdmin = user?.role === "admin";
   const [me, setMe] = useState(null);
   const [apkUrl, setApkUrl] = useState("");
 
@@ -176,7 +174,7 @@ export default function ProfilePage() {
 
   return (
     <div className="flex flex-col h-screen bg-gray-900 text-white">
-      <AppHeader activePage="profile" isAdmin={isAdmin} logout={logout} constrained />
+      <AppHeader activePage="profile" constrained />
 
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-[1024px] min-w-[800px] mx-auto p-6 flex flex-col gap-6">

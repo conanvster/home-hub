@@ -16,7 +16,6 @@ import { IS_LOCAL } from "./config";
 
 function PrivateRoute({ children }) {
   const token = useAuthStore((s) => s.token);
-  if (IS_LOCAL) return children;
   return token ? children : <Navigate to="/login" replace />;
 }
 
@@ -24,11 +23,12 @@ export default function App() {
   if (IS_LOCAL) {
     return (
       <Routes>
-        <Route path="/" element={<Navigate to="/kanban" replace />} />
-        <Route path="/kanban" element={<KanbanPage />} />
-        <Route path="/ha" element={<HAPage />} />
-        <Route path="/map" element={<MapPage />} />
-        <Route path="/admin" element={<LocalAdminPage />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/" element={<PrivateRoute><Navigate to="/kanban" replace /></PrivateRoute>} />
+        <Route path="/kanban" element={<PrivateRoute><KanbanPage /></PrivateRoute>} />
+        <Route path="/ha" element={<PrivateRoute><HAPage /></PrivateRoute>} />
+        <Route path="/map" element={<PrivateRoute><MapPage /></PrivateRoute>} />
+        <Route path="/admin" element={<PrivateRoute><LocalAdminPage /></PrivateRoute>} />
         <Route path="*" element={<Navigate to="/kanban" replace />} />
       </Routes>
     );

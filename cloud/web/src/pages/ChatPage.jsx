@@ -59,8 +59,6 @@ function MessageBubble({ msg, myId }) {
 
 export default function ChatPage() {
   const user = useAuthStore((s) => s.user);
-  const logout = useAuthStore((s) => s.logout);
-  const isAdmin = user?.role === "admin";
   const myId = user?._id || JSON.parse(localStorage.getItem("auth") || "{}")?.state?.user?._id;
 
   const [users, setUsers] = useState([]);
@@ -149,7 +147,7 @@ export default function ChatPage() {
 
   return (
     <div className="flex flex-col h-screen bg-gray-900 text-white">
-      <AppHeader activePage="chat" isAdmin={isAdmin} logout={logout} constrained />
+      <AppHeader activePage="chat" constrained />
 
       <div className="flex flex-1 overflow-hidden">
       <div className="max-w-[1024px] min-w-[800px] mx-auto w-full flex overflow-hidden">
