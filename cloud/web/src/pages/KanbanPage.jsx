@@ -423,9 +423,9 @@ function TaskCard({ task, categories, onEdit, onDragStart, onDragEnd }) {
 }
 
 // ── Колонка ────────────────────────────────────────────────────
-function KanbanColumn({ col, tasks, categories, onAdd, onEdit, onDrop, onDragStart, onDragEnd, isDragOver, onDragOver, onDragLeave }) {
+function KanbanColumn({ col, tasks, categories, onAdd, onEdit, onDrop, onDragStart, onDragEnd, isDragOver, onDragOver, onDragLeave, fullWidth }) {
   return (
-    <div className="flex flex-col min-w-[230px] flex-1 max-w-[310px]">
+    <div className={`flex flex-col ${fullWidth ? "w-full" : "min-w-[230px] flex-1 max-w-[310px]"}`}>
       <div className="flex items-center justify-between mb-3 px-1">
         <div className="flex items-center gap-2">
           <span className="text-white text-sm font-semibold">{col.label}</span>
@@ -554,6 +554,8 @@ export default function KanbanPage() {
   const tasksByCol = (colId) =>
     tasks.filter((t) => t.column === colId).sort((a, b) => a.order - b.order);
 
+  const [activeCol, setActiveCol] = useState("idea"); // мобільний таб
+
   return (
     <div className="flex flex-col min-h-screen bg-gray-900 text-white">
       {/* Хедер */}
@@ -561,42 +563,84 @@ export default function KanbanPage() {
 
       {/* Тулбар */}
       <div className="border-b border-gray-800">
-      <div className="max-w-[1024px] min-w-[800px] mx-auto px-6 py-2 flex items-center">
-        <button
-          onClick={() => setShowCats(true)}
-          className="text-gray-400 hover:text-white text-xs transition"
-        >
-          ⚙ Категорії
-        </button>
-      </div>
+        <div className="max-w-[1024px] mx-auto px-4 py-2 flex items-center gap-4">
+          <button
+            onClick={() => setShowCats(true)}
+            className="text-gray-400 hover:text-white text-xs transition"
+          >
+            ⚙ Категорії
+          </button>
+        </div>
       </div>
 
-      {/* Дошка */}
-      <div className="flex-1 overflow-x-auto p-6">
-        <div className="max-w-[1024px] min-w-[800px] mx-auto h-full">
+      {/* Мобільні таби колонок */}
+      <div className="md:hidden flex border-b border-gray-800 overflow-x-auto">
+        {COLUMNS.map((col) => (
+          <button
+            key={col.id}
+            onClick={() => setActiveCol(col.id)}
+            className={`flex-1 px-3 py-2.5 text-xs font-medium whitespace-nowrap transition border-b-2 ${
+              activeCol === col.id
+                ? "border-blue-500 text-white"
+                : "border-transparent text-gray-400 hover:text-gray-200"
+            }`}
+          >
+            {col.label}
+            <span className="ml-1 text-gray-500 text-xs">
+              {tasksByCol(col.id).length}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {/* Дошка — десктоп: горизонтальні колонки / мобільний: одна колонка */}
+      <div className="flex-1 overflow-x-auto p-4 md:p-6">
         {loading ? (
           <div className="text-gray-400 text-sm">Завантаження...</div>
         ) : (
-          <div className="flex gap-5 h-full">
-            {COLUMNS.map((col) => (
-              <KanbanColumn
-                key={col.id}
-                col={col}
-                tasks={tasksByCol(col.id)}
-                categories={categories}
-                onAdd={openNew}
-                onEdit={openEdit}
-                onDrop={handleDrop}
-                onDragStart={handleDragStart}
-                onDragEnd={handleDragEnd}
-                onDragOver={(e) => handleDragOver(e, col.id)}
-                onDragLeave={handleDragLeave}
-                isDragOver={dragOverCol === col.id}
-              />
-            ))}
-          </div>
+          <>
+            {/* Десктоп */}
+            <div className="hidden md:flex gap-5 max-w-[1024px] mx-auto h-full">
+              {COLUMNS.map((col) => (
+                <KanbanColumn
+                  key={col.id}
+                  col={col}
+                  tasks={tasksByCol(col.id)}
+                  categories={categories}
+                  onAdd={openNew}
+                  onEdit={openEdit}
+                  onDrop={handleDrop}
+                  onDragStart={handleDragStart}
+                  onDragEnd={handleDragEnd}
+                  onDragOver={(e) => handleDragOver(e, col.id)}
+                  onDragLeave={handleDragLeave}
+                  isDragOver={dragOverCol === col.id}
+                />
+              ))}
+            </div>
+
+            {/* Мобільний — тільки активна колонка */}
+            <div className="md:hidden">
+              {COLUMNS.filter((col) => col.id === activeCol).map((col) => (
+                <KanbanColumn
+                  key={col.id}
+                  col={col}
+                  tasks={tasksByCol(col.id)}
+                  categories={categories}
+                  onAdd={openNew}
+                  onEdit={openEdit}
+                  onDrop={handleDrop}
+                  onDragStart={handleDragStart}
+                  onDragEnd={handleDragEnd}
+                  onDragOver={(e) => handleDragOver(e, col.id)}
+                  onDragLeave={handleDragLeave}
+                  isDragOver={dragOverCol === col.id}
+                  fullWidth
+                />
+              ))}
+            </div>
+          </>
         )}
-        </div>
       </div>
 
       {/* Модальне вікно задачі */}

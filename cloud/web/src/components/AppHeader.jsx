@@ -14,34 +14,33 @@ export default function AppHeader({ activePage, constrained = false }) {
   const logout = useAuthStore((s) => s.logout);
   const isAdmin = user?.role === "admin";
 
-  const active = (cls) => `px-4 h-full text-sm border-b-2 flex items-center transition ${cls}`;
-  const inactiveCls = "border-transparent text-gray-400 hover:text-white";
-  const activeCls   = "border-blue-500 text-white";
+  const navLink = (isActive) =>
+    `px-2 sm:px-4 h-full text-xs sm:text-sm border-b-2 flex items-center transition whitespace-nowrap ${
+      isActive ? "border-blue-500 text-white" : "border-transparent text-gray-400 hover:text-white"
+    }`;
+  const inactiveLink = `px-2 sm:px-4 h-full text-xs sm:text-sm border-b-2 border-transparent flex items-center transition text-gray-400 hover:text-white`;
   const innerCls = constrained
-    ? "max-w-[1024px] min-w-[800px] mx-auto w-full flex items-center h-12 px-4"
-    : "flex items-center h-12 px-4 w-full";
+    ? "max-w-[1024px] mx-auto w-full flex items-center h-12 px-3 sm:px-4"
+    : "flex items-center h-12 px-3 sm:px-4 w-full";
 
   // ── Локальний режим ──────────────────────────────────────────
   if (IS_LOCAL) {
     return (
       <header className="bg-gray-800 border-b border-gray-700 flex-shrink-0">
         <div className={innerCls}>
-          <a href="/kanban" className="font-bold text-white mr-6 text-sm whitespace-nowrap">🏠 Home Hub</a>
+          <a href="/kanban" className="font-bold text-white mr-3 sm:mr-6 text-sm whitespace-nowrap">🏠 <span className="hidden sm:inline">Home Hub</span></a>
           <nav className="flex flex-1 h-full">
-            <a href="/kanban" className={active(activePage === "kanban" ? activeCls : inactiveCls)}>Канбан</a>
-            <a href="/map"    className={active(activePage === "map"    ? activeCls : inactiveCls)}>Трекінг</a>
-            <a href="/chat"   className={active(activePage === "chat"   ? activeCls : inactiveCls)}>💬 Чат</a>
-            {isAdmin && <a href="/admin" className={active(activePage === "admin" ? activeCls : inactiveCls)}>Адмін</a>}
+            <a href="/kanban" className={navLink(activePage === "kanban")}>Канбан</a>
+            <a href="/map"    className={navLink(activePage === "map")}>Трекінг</a>
+            <a href="/chat"   className={navLink(activePage === "chat")}>💬 Чат</a>
+            {isAdmin && <a href="/admin" className={navLink(activePage === "admin")}>Адмін</a>}
           </nav>
-          <a href="/ha" className={active(activePage === "ha" ? activeCls : inactiveCls)}>🏡 Дім</a>
-          <a href={IMMICH_URL} target="_blank" rel="noreferrer"
-            className={active(inactiveCls + " hidden sm:flex")}>🖼 Фото</a>
-          <a href={FILEBROWSER_URL} target="_blank" rel="noreferrer"
-            className={active(inactiveCls + " hidden sm:flex")}>📁 Файли</a>
-          <a href={HA_URL} target="_blank" rel="noreferrer"
-            className={active(inactiveCls + " hidden sm:flex")}>⚙️ HA</a>
-          <span className="text-gray-600 text-xs font-mono mx-3 whitespace-nowrap hidden sm:inline">{VERSION}</span>
-          <button onClick={logout} className="text-gray-400 hover:text-white text-sm px-3 transition whitespace-nowrap">
+          <a href="/ha" className={navLink(activePage === "ha")}>🏡 <span className="hidden sm:inline">Дім</span></a>
+          <a href={IMMICH_URL} target="_blank" rel="noreferrer" className={inactiveLink + " hidden md:flex"}>🖼 Фото</a>
+          <a href={FILEBROWSER_URL} target="_blank" rel="noreferrer" className={inactiveLink + " hidden md:flex"}>📁 Файли</a>
+          <a href={HA_URL} target="_blank" rel="noreferrer" className={inactiveLink + " hidden md:flex"}>⚙️ HA</a>
+          <span className="text-gray-600 text-xs font-mono mx-2 whitespace-nowrap hidden md:inline">{VERSION}</span>
+          <button onClick={logout} className="text-gray-400 hover:text-white text-xs sm:text-sm px-2 sm:px-3 transition whitespace-nowrap">
             Вийти
           </button>
         </div>
@@ -53,17 +52,17 @@ export default function AppHeader({ activePage, constrained = false }) {
   return (
     <header className="bg-gray-800 border-b border-gray-700 flex-shrink-0">
       <div className={innerCls}>
-        <a href="/" className="font-bold text-white mr-6 text-sm whitespace-nowrap">🏠 Home Hub</a>
+        <a href="/" className="font-bold text-white mr-3 sm:mr-6 text-sm whitespace-nowrap">🏠 Home Hub</a>
         <nav className="flex flex-1 h-full">
-          <a href="/"        className={active(activePage === "map"     ? activeCls : inactiveCls)}>Трекінг</a>
+          <a href="/"        className={navLink(activePage === "map")}>Трекінг</a>
           {isAdmin && (
-            <a href="/admin" className={active(activePage === "admin"   ? activeCls : inactiveCls)}>Адмін</a>
+            <a href="/admin" className={navLink(activePage === "admin")}>Адмін</a>
           )}
-          <a href="/chat"    className={active(activePage === "chat"    ? activeCls : inactiveCls)}>💬 Чат</a>
-          <a href="/profile" className={active(activePage === "profile" ? activeCls : inactiveCls)}>👤 Профіль</a>
+          <a href="/chat"    className={navLink(activePage === "chat")}>💬 Чат</a>
+          <a href="/profile" className={navLink(activePage === "profile")}>👤 Профіль</a>
         </nav>
-        <span className="text-gray-600 text-xs font-mono mx-3 whitespace-nowrap hidden sm:inline">{VERSION}</span>
-        <button onClick={logout} className="text-gray-400 hover:text-white text-sm px-3 transition whitespace-nowrap">
+        <span className="text-gray-600 text-xs font-mono mx-2 whitespace-nowrap hidden md:inline">{VERSION}</span>
+        <button onClick={logout} className="text-gray-400 hover:text-white text-xs sm:text-sm px-2 sm:px-3 transition whitespace-nowrap">
           Вийти
         </button>
       </div>

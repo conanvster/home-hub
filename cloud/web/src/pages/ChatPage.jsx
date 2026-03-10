@@ -34,6 +34,7 @@ export default function ChatPage() {
   const [unread, setUnread] = useState({});
   const [search, setSearch] = useState("");
   const [sending, setSending] = useState(false);
+  const [showSidebar, setShowSidebar] = useState(true); // мобільний стан
   const bottomRef = useRef(null);
   const intervalRef = useRef(null);
 
@@ -153,6 +154,7 @@ export default function ChatPage() {
   function handleSelectUser(u) {
     setSelectedUser(u);
     setMessages([]);
+    setShowSidebar(false); // на мобільному переходимо в чат
   }
 
   const title = isAISelected
@@ -166,9 +168,12 @@ export default function ChatPage() {
       <AppHeader activePage="chat" constrained />
 
       <div className="flex flex-1 overflow-hidden">
-      <div className="max-w-[1024px] min-w-[800px] mx-auto w-full flex overflow-hidden">
-        {/* Sidebar */}
-        <div className="flex flex-col border-r border-gray-700 w-64 flex-shrink-0">
+      <div className="max-w-[1024px] w-full mx-auto flex overflow-hidden">
+
+        {/* Sidebar — на мобільному: повний екран або прихований */}
+        <div className={`flex-col border-r border-gray-700 flex-shrink-0
+          ${showSidebar ? "flex w-full" : "hidden"}
+          md:flex md:w-64`}>
           <div className="p-3 border-b border-gray-700 flex flex-col gap-2">
             <button
               onClick={() => handleSelectUser(null)}
@@ -225,12 +230,22 @@ export default function ChatPage() {
           </div>
         </div>
 
-        {/* Чат */}
-        <div className="flex flex-col flex-1 overflow-hidden">
+        {/* Чат — на мобільному: повний екран або прихований */}
+        <div className={`flex-col flex-1 overflow-hidden
+          ${!showSidebar ? "flex" : "hidden"}
+          md:flex`}>
+
+          {/* Хедер чату — кнопка "назад" лише на мобільному */}
           <div className="px-4 py-3 border-b border-gray-700 font-semibold text-sm flex items-center gap-2">
+            <button
+              onClick={() => setShowSidebar(true)}
+              className="md:hidden text-gray-400 hover:text-white mr-1 text-base leading-none"
+            >
+              ←
+            </button>
             {title}
             {isAISelected && (
-              <span className="text-purple-400 text-xs font-normal">· може шукати в інтернеті та керувати канбаном</span>
+              <span className="text-purple-400 text-xs font-normal hidden sm:inline">· може шукати в інтернеті та керувати канбаном</span>
             )}
           </div>
 
@@ -266,8 +281,8 @@ export default function ChatPage() {
               onChange={(e) => setText(e.target.value)}
               onKeyDown={onKeyDown}
               placeholder={isAISelected
-                ? "Запитай AI агента... (Enter — надіслати)"
-                : "Повідомлення... (Enter — надіслати, Shift+Enter — новий рядок)"}
+                ? "Запитай AI агента..."
+                : "Повідомлення..."}
               rows={1}
               className={`flex-1 bg-gray-800 border rounded-xl px-4 py-2 text-sm text-white placeholder-gray-500 outline-none resize-none ${
                 isAISelected ? "border-purple-700 focus:border-purple-500" : "border-gray-600 focus:border-blue-500"
@@ -285,6 +300,7 @@ export default function ChatPage() {
             </button>
           </div>
         </div>
+
       </div>
       </div>
     </div>
