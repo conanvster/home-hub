@@ -37,6 +37,7 @@
     "scheme": "homehub",
     "plugins": [
       "expo-router",
+      "expo-notifications",
       [
         "expo-location",
         {
@@ -54,6 +55,12 @@
         }
       ]
     ],
+    "updates": {
+      "url": "https://u.expo.dev/f635aa99-530a-405c-8ef5-36828b923109"
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "extra": {
       "router": {},
       "eas": {

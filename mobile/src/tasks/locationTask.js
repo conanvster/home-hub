@@ -37,8 +37,13 @@ TaskManager.defineTask(LOCATION_TASK, async ({ data, error }) => {
 });
 
 export async function startLocationTracking() {
+  // Крок 1: foreground дозвіл (показує системний діалог)
+  const { status: fgStatus } = await Location.requestForegroundPermissionsAsync();
+  if (fgStatus !== "granted") throw new Error("Дозвольте доступ до геолокації");
+
+  // Крок 2: background дозвіл (показує системний діалог з вибором "Завжди")
   const { status } = await Location.requestBackgroundPermissionsAsync();
-  if (status !== "granted") throw new Error("Немає дозволу на фонову геолокацію");
+  if (status !== "granted") throw new Error("Оберіть 'Дозволити завжди' для фонового трекінгу");
 
   const isRegistered = await TaskManager.isTaskRegisteredAsync(LOCATION_TASK);
   if (!isRegistered) {

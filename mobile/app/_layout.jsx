@@ -5,6 +5,7 @@ import { useAuthStore } from "../src/store/useAuthStore";
 import { useSettingsStore } from "../src/store/useSettingsStore";
 // Визначення фонової задачі — має бути імпортовано до рендеру
 import "../src/tasks/locationTask";
+import { registerPushToken } from "../src/services/notifications";
 
 export default function RootLayout() {
   const init = useAuthStore((s) => s.init);
@@ -14,9 +15,9 @@ export default function RootLayout() {
   useEffect(() => {
     init();
     initSettings().then(() => {
-      // Перша перевірка одразу після ініціалізації налаштувань
       checkLocalServer();
     });
+    registerPushToken();
     console.log("App started");
 
     // Перевірка кожні 30 секунд
