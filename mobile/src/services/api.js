@@ -100,6 +100,18 @@ export const api = {
     cloudReq("/chat/messages", { method: "POST", body: JSON.stringify({ text, recipientId: recipientId || null }) }),
   getChatUnread: () => cloudReq("/chat/unread"),
 
+  // ── Chat (local) ─────────────────────────────────────────────
+  getChatUsersLocal: (q) => localReq(`/chat/users${q ? `?q=${encodeURIComponent(q)}` : ""}`),
+  getChatMessagesLocal: (recipientId, limit = 50) =>
+    localReq(`/chat/messages?limit=${limit}${recipientId ? `&recipientId=${recipientId}` : ""}`),
+  sendChatMessageLocal: (text, recipientId) =>
+    localReq("/chat/messages", { method: "POST", body: JSON.stringify({ text, recipientId: recipientId || null }) }),
+  getChatUnreadLocal: () => localReq("/chat/unread"),
+
+  // ── AI Agent (local) ─────────────────────────────────────────
+  agentChat: (message, history) =>
+    localReq("/agent/chat", { method: "POST", body: JSON.stringify({ message, history }) }),
+
   // Camera URL — повертає URL (не робить fetch, використовується в Image)
   haCameraUrl: async (entityId) => {
     const base = await getLocalBase();
