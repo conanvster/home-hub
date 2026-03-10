@@ -3,6 +3,8 @@ const Tracker = require("../models/Tracker");
 const Zone = require("../models/Zone");
 const TelegramMessage = require("../models/TelegramMessage");
 const User = require("../models/User");
+const ZoneEvent = require("../models/ZoneEvent");
+const ZoneState = require("../models/ZoneState");
 const SyncState = require("../models/SyncState");
 
 const CLOUD_URL = process.env.CLOUD_URL || "https://mytracking.com.ua";
@@ -14,6 +16,7 @@ async function syncFromCloud() {
   const params = new URLSearchParams();
   if (state.lastSync) params.set("since", state.lastSync.toISOString());
   if (state.lastTelegramSync) params.set("telegramSince", state.lastTelegramSync.toISOString());
+  if (state.lastZoneEventSync) params.set("zoneEventSince", state.lastZoneEventSync.toISOString());
 
   console.log(`[${new Date().toISOString()}] Syncing from cloud...`);
 
@@ -84,6 +87,27 @@ async function syncFromCloud() {
   }
   if (count) console.log(`[Sync] Inserted ${inserted} new log records`);
 
+  // ZoneState — повна заміна
+  await ZoneState.deleteMany({});
+  if (data.zoneStates?.length) await ZoneState.insertMany(data.zoneStates, { ordered: false });
+  console.log(`[Sync] ZoneStates: ${data.zoneStates?.length ?? 0}`);
+
+  // ZoneEvents — інкрементально
+  const { count: zeCount, items: zoneEvents } = data.zoneEvents || { count: 0, items: [] };
+  let zoneEventsInserted = 0;
+  for (const ev of zoneEvents) {
+    try {
+      await ZoneEvent.create({
+        imei: ev.imei, zoneId: ev.zoneId, zoneName: ev.zoneName,
+        userId: ev.userId, trackerName: ev.trackerName,
+        event: ev.event, lat: ev.lat, lng: ev.lng,
+        createdAt: ev.createdAt, cloudId: ev._id,
+      });
+      zoneEventsInserted++;
+    } catch { /* duplicate — skip */ }
+  }
+  if (zeCount) console.log(`[Sync] ZoneEvents: inserted ${zoneEventsInserted}/${zeCount}`);
+
   // Telegram — інкрементально
   const { count: tCount, items: messages } = data.telegram;
   console.log(`[Sync] Received ${tCount} new telegram messages`);
@@ -115,6 +139,7 @@ async function syncFromCloud() {
   };
   if (count) updateData.lastSync = new Date(logs[logs.length - 1].createdAt);
   if (tCount) updateData.lastTelegramSync = new Date(messages[messages.length - 1].createdAt);
+  if (zeCount) updateData.lastZoneEventSync = new Date(zoneEvents[zoneEvents.length - 1].createdAt);
 
   await SyncState.findOneAndUpdate({}, updateData);
   return { received: count, inserted };

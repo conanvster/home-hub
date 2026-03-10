@@ -5,6 +5,8 @@ const Tracker = require("../models/Tracker");
 const Zone = require("../models/Zone");
 const TelegramMessage = require("../models/TelegramMessage");
 const User = require("../models/User");
+const ZoneEvent = require("../models/ZoneEvent");
+const ZoneState = require("../models/ZoneState");
 
 function syncAuth(req, res, next) {
   const secret = req.headers["x-sync-secret"];
@@ -14,22 +16,25 @@ function syncAuth(req, res, next) {
   next();
 }
 
-// GET /api/sync?since=ISO&telegramSince=ISO&limit=10000
+// GET /api/sync?since=ISO&telegramSince=ISO&zoneEventSince=ISO&limit=10000
 // Returns all data in one request:
-//   logs + telegram — incremental (since)
-//   trackers, zones, users — full list (users include password hash for disaster recovery)
+//   logs + telegram + zoneEvents — incremental (since)
+//   trackers, zones, users, zoneStates — full list
 router.get("/", syncAuth, async (req, res) => {
-  const { since, telegramSince, limit = 10000 } = req.query;
+  const { since, telegramSince, zoneEventSince, limit = 10000 } = req.query;
 
   const logsFilter = since ? { createdAt: { $gt: new Date(since) } } : {};
   const telegramFilter = telegramSince ? { createdAt: { $gt: new Date(telegramSince) } } : {};
+  const zoneEventFilter = zoneEventSince ? { createdAt: { $gt: new Date(zoneEventSince) } } : {};
 
-  const [logs, trackers, zones, telegram, users] = await Promise.all([
+  const [logs, trackers, zones, telegram, users, zoneEvents, zoneStates] = await Promise.all([
     Log.find(logsFilter).sort({ createdAt: 1 }).limit(Number(limit)).lean(),
     Tracker.find().lean(),
     Zone.find().lean(),
     TelegramMessage.find(telegramFilter).sort({ createdAt: 1 }).limit(1000).lean(),
     User.find().select("email role telegramId password createdAt").lean(),
+    ZoneEvent.find(zoneEventFilter).sort({ createdAt: 1 }).limit(5000).lean(),
+    ZoneState.find().lean(),
   ]);
 
   res.json({
@@ -38,6 +43,8 @@ router.get("/", syncAuth, async (req, res) => {
     zones,
     telegram: { count: telegram.length, items: telegram },
     users,
+    zoneEvents: { count: zoneEvents.length, items: zoneEvents },
+    zoneStates,
   });
 });
 
