@@ -42,6 +42,7 @@ export default function App() {
       <Route path="/" element={<PrivateRoute><MapPage /></PrivateRoute>} />
       <Route path="/admin" element={<PrivateRoute><AdminPage /></PrivateRoute>} />
       <Route path="/chat" element={<PrivateRoute><ChatPage /></PrivateRoute>} />
+      <Route path="/profile" element={<PrivateRoute><ProfilePage /></PrivateRoute>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
