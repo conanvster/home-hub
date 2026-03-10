@@ -2,54 +2,20 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { api } from "../services/api";
 import { useAuthStore } from "../store/useAuthStore";
 import AppHeader from "../components/AppHeader";
+import { IS_LOCAL } from "../config";
 
-function UserList({ users, selected, onSelect, unread }) {
-  return (
-    <div className="flex flex-col border-r border-gray-700 w-64 flex-shrink-0">
-      <div className="p-3 border-b border-gray-700">
-        <button
-          onClick={() => onSelect(null)}
-          className={`w-full text-left px-3 py-2 rounded-lg text-sm transition ${
-            selected === null ? "bg-blue-600 text-white" : "text-gray-300 hover:bg-gray-700"
-          }`}
-        >
-          💬 Загальний чат
-        </button>
-      </div>
-      <div className="flex-1 overflow-y-auto p-2 flex flex-col gap-1">
-        <p className="text-gray-500 text-xs px-2 py-1">Особисті повідомлення</p>
-        {users.map((u) => {
-          const unreadCount = unread[u._id] || 0;
-          return (
-            <button
-              key={u._id}
-              onClick={() => onSelect(u)}
-              className={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center justify-between transition ${
-                selected?._id === u._id ? "bg-blue-600 text-white" : "text-gray-300 hover:bg-gray-700"
-              }`}
-            >
-              <span className="truncate">👤 {u.email.split("@")[0]}</span>
-              {unreadCount > 0 && (
-                <span className="bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5 min-w-[20px] text-center">
-                  {unreadCount}
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
+// Спеціальний "користувач" для AI агента (тільки локально)
+const AI_USER = { _id: "ai", email: "ai@agent.local" };
 
 function MessageBubble({ msg, myId }) {
   const isOwn = msg.senderId === myId;
+  const isAI  = msg.senderId === "ai";
   const time = new Date(msg.createdAt).toLocaleTimeString("uk-UA", { hour: "2-digit", minute: "2-digit" });
-  const name = msg.senderEmail?.split("@")[0];
+  const name = isAI ? "🤖 AI" : msg.senderEmail?.split("@")[0];
   return (
     <div className={`flex ${isOwn ? "justify-end" : "justify-start"}`}>
-      <div className={`max-w-[70%] rounded-2xl px-4 py-2 ${isOwn ? "bg-blue-600" : "bg-gray-700"}`}>
-        {!isOwn && <p className="text-blue-400 text-xs font-semibold mb-1">{name}</p>}
+      <div className={`max-w-[70%] rounded-2xl px-4 py-2 ${isOwn ? "bg-blue-600" : isAI ? "bg-purple-900 border border-purple-700" : "bg-gray-700"}`}>
+        {!isOwn && <p className={`text-xs font-semibold mb-1 ${isAI ? "text-purple-300" : "text-blue-400"}`}>{name}</p>}
         <p className="text-white text-sm whitespace-pre-wrap">{msg.text}</p>
         <p className="text-white/40 text-xs text-right mt-1">{time}</p>
       </div>
@@ -70,6 +36,8 @@ export default function ChatPage() {
   const [sending, setSending] = useState(false);
   const bottomRef = useRef(null);
   const intervalRef = useRef(null);
+
+  const isAISelected = selectedUser?._id === "ai";
 
   // Завантажити список юзерів
   useEffect(() => {
@@ -100,6 +68,7 @@ export default function ChatPage() {
 
   // Завантажити повідомлення при зміні діалогу
   const loadMessages = useCallback(() => {
+    if (isAISelected) return; // AI — тільки локальний стан
     api.getChatMessages(selectedUser?._id)
       .then((data) => {
         setMessages(data);
@@ -108,15 +77,16 @@ export default function ChatPage() {
         }
       })
       .catch(console.error);
-  }, [selectedUser]);
+  }, [selectedUser, isAISelected]);
 
   useEffect(() => {
     setMessages([]);
+    if (isAISelected) return;
     loadMessages();
     clearInterval(intervalRef.current);
     intervalRef.current = setInterval(loadMessages, 3000);
     return () => clearInterval(intervalRef.current);
-  }, [loadMessages]);
+  }, [loadMessages, isAISelected]);
 
   // Скрол вниз при нових повідомленнях
   useEffect(() => {
@@ -128,6 +98,43 @@ export default function ChatPage() {
     if (!msg || sending) return;
     setText("");
     setSending(true);
+
+    if (isAISelected) {
+      // AI режим — додаємо повідомлення локально і звертаємось до агента
+      const userMsg = {
+        _id: `user-${Date.now()}`,
+        senderId: myId,
+        senderEmail: user?.email,
+        text: msg,
+        createdAt: new Date().toISOString(),
+      };
+      const currentMessages = [...messages, userMsg];
+      setMessages(currentMessages);
+      try {
+        const { response } = await api.agentChat(msg, currentMessages);
+        setMessages(prev => [...prev, {
+          _id: `ai-${Date.now()}`,
+          senderId: "ai",
+          senderEmail: "ai@agent.local",
+          text: response,
+          createdAt: new Date().toISOString(),
+        }]);
+      } catch (err) {
+        setMessages(prev => [...prev, {
+          _id: `ai-err-${Date.now()}`,
+          senderId: "ai",
+          senderEmail: "ai@agent.local",
+          text: `❌ Помилка: ${err.message}`,
+          createdAt: new Date().toISOString(),
+        }]);
+        setText(msg);
+      } finally {
+        setSending(false);
+      }
+      return;
+    }
+
+    // Звичайний чат
     try {
       const newMsg = await api.sendChatMessage(msg, selectedUser?._id);
       setMessages((prev) => [...prev, newMsg]);
@@ -143,7 +150,16 @@ export default function ChatPage() {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
   }
 
-  const title = selectedUser ? `💬 ${selectedUser.email.split("@")[0]}` : "💬 Загальний чат";
+  function handleSelectUser(u) {
+    setSelectedUser(u);
+    setMessages([]);
+  }
+
+  const title = isAISelected
+    ? "🤖 AI Агент"
+    : selectedUser
+      ? `💬 ${selectedUser.email.split("@")[0]}`
+      : "💬 Загальний чат";
 
   return (
     <div className="flex flex-col h-screen bg-gray-900 text-white">
@@ -155,13 +171,26 @@ export default function ChatPage() {
         <div className="flex flex-col border-r border-gray-700 w-64 flex-shrink-0">
           <div className="p-3 border-b border-gray-700 flex flex-col gap-2">
             <button
-              onClick={() => setSelectedUser(null)}
+              onClick={() => handleSelectUser(null)}
               className={`w-full text-left px-3 py-2 rounded-lg text-sm transition ${
                 selectedUser === null ? "bg-blue-600 text-white" : "text-gray-300 hover:bg-gray-700"
               }`}
             >
               💬 Загальний чат
             </button>
+
+            {/* AI агент — тільки локально */}
+            {IS_LOCAL && (
+              <button
+                onClick={() => handleSelectUser(AI_USER)}
+                className={`w-full text-left px-3 py-2 rounded-lg text-sm transition ${
+                  isAISelected ? "bg-purple-700 text-white" : "text-gray-300 hover:bg-gray-700"
+                }`}
+              >
+                🤖 AI Агент
+              </button>
+            )}
+
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -176,7 +205,7 @@ export default function ChatPage() {
               return (
                 <button
                   key={u._id}
-                  onClick={() => setSelectedUser(u)}
+                  onClick={() => handleSelectUser(u)}
                   className={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center justify-between transition ${
                     selectedUser?._id === u._id ? "bg-blue-600 text-white" : "text-gray-300 hover:bg-gray-700"
                   }`}
@@ -198,15 +227,36 @@ export default function ChatPage() {
 
         {/* Чат */}
         <div className="flex flex-col flex-1 overflow-hidden">
-          <div className="px-4 py-3 border-b border-gray-700 font-semibold text-sm">{title}</div>
+          <div className="px-4 py-3 border-b border-gray-700 font-semibold text-sm flex items-center gap-2">
+            {title}
+            {isAISelected && (
+              <span className="text-purple-400 text-xs font-normal">· може шукати в інтернеті та керувати канбаном</span>
+            )}
+          </div>
 
           <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
-            {messages.length === 0 && (
+            {messages.length === 0 && !isAISelected && (
               <p className="text-gray-500 text-sm text-center mt-10">Немає повідомлень. Напишіть перше!</p>
+            )}
+            {messages.length === 0 && isAISelected && (
+              <p className="text-gray-500 text-sm text-center mt-10">
+                Привіт! Я можу:<br/>
+                📋 Переглядати та створювати задачі на канбані<br/>
+                🔍 Шукати інформацію в інтернеті<br/>
+                💡 Допомагати з рішеннями для дому
+              </p>
             )}
             {messages.map((m) => (
               <MessageBubble key={m._id} msg={m} myId={myId} />
             ))}
+            {sending && isAISelected && (
+              <div className="flex justify-start">
+                <div className="bg-purple-900 border border-purple-700 rounded-2xl px-4 py-2">
+                  <p className="text-purple-300 text-xs font-semibold mb-1">🤖 AI</p>
+                  <p className="text-white text-sm">Думаю...</p>
+                </div>
+              </div>
+            )}
             <div ref={bottomRef} />
           </div>
 
@@ -215,15 +265,21 @@ export default function ChatPage() {
               value={text}
               onChange={(e) => setText(e.target.value)}
               onKeyDown={onKeyDown}
-              placeholder="Повідомлення... (Enter — надіслати, Shift+Enter — новий рядок)"
+              placeholder={isAISelected
+                ? "Запитай AI агента... (Enter — надіслати)"
+                : "Повідомлення... (Enter — надіслати, Shift+Enter — новий рядок)"}
               rows={1}
-              className="flex-1 bg-gray-800 border border-gray-600 rounded-xl px-4 py-2 text-sm text-white placeholder-gray-500 outline-none focus:border-blue-500 resize-none"
+              className={`flex-1 bg-gray-800 border rounded-xl px-4 py-2 text-sm text-white placeholder-gray-500 outline-none resize-none ${
+                isAISelected ? "border-purple-700 focus:border-purple-500" : "border-gray-600 focus:border-blue-500"
+              }`}
               style={{ minHeight: 40, maxHeight: 120 }}
             />
             <button
               onClick={send}
               disabled={!text.trim() || sending}
-              className="bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white px-4 rounded-xl text-sm font-semibold transition"
+              className={`disabled:opacity-40 text-white px-4 rounded-xl text-sm font-semibold transition ${
+                isAISelected ? "bg-purple-700 hover:bg-purple-600" : "bg-blue-600 hover:bg-blue-500"
+              }`}
             >
               {sending ? "..." : "▶"}
             </button>

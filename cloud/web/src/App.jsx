@@ -29,6 +29,7 @@ export default function App() {
         <Route path="/ha" element={<PrivateRoute><HAPage /></PrivateRoute>} />
         <Route path="/map" element={<PrivateRoute><MapPage /></PrivateRoute>} />
         <Route path="/admin" element={<PrivateRoute><LocalAdminPage /></PrivateRoute>} />
+        <Route path="/chat"  element={<PrivateRoute><ChatPage /></PrivateRoute>} />
         <Route path="*" element={<Navigate to="/kanban" replace />} />
       </Routes>
     );

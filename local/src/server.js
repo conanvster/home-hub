@@ -25,6 +25,8 @@ app.use("/api/backup",   auth, require("./routes/backup"));
 app.use("/api/push",     auth, require("./routes/push"));
 app.use("/api/tasks",    auth, require("./routes/tasks"));
 app.use("/api/ha",       auth, require("./routes/ha"));
+app.use("/api/chat",     auth, require("./routes/chat"));
+app.use("/api/agent",    auth, require("./routes/agent"));
 
 const PORT = process.env.PORT || 3002;
 const SYNC_CRON = process.env.SYNC_CRON || "0 * * * *";

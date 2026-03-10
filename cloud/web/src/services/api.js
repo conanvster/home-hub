@@ -133,6 +133,10 @@ export const api = {
   getSettings: () => request("/settings"),
   updateSettings: (data) => request("/settings", { method: "PUT", body: JSON.stringify(data) }),
 
+  // AI Agent (local only)
+  agentChat: (message, history) =>
+    request("/agent/chat", { method: "POST", body: JSON.stringify({ message, history }) }),
+
   // Local sync trigger
   triggerSync: () => request("/sync/trigger", { method: "POST" }),
 

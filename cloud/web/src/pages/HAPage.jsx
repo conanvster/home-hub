@@ -631,7 +631,7 @@ export default function HAPage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-900 text-white">
-      <AppHeader activePage="ha" />
+      <AppHeader activePage="ha" constrained />
 
       {selectedCamera && (
         <CameraModal state={selectedCamera} onClose={() => setSelectedCamera(null)} />
