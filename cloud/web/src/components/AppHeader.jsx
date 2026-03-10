@@ -3,49 +3,27 @@ import { IS_LOCAL, VERSION, IMMICH_URL, FILEBROWSER_URL, HA_URL } from "../confi
 /**
  * Єдиний хедер для всього додатку.
  *
- * Local-режим: вся навігація — URL-посилання (/kanban, /map, /map?tab=settings, /map?tab=admin)
- * Cloud-режим: Трекінг/Налаштування — внутрішні кнопки (onTabChange), Адмін — посилання
+ * Local-режим: вся навігація — URL-посилання (/kanban, /map, /map?tab=admin)
+ * Cloud-режим: всі посилання (Трекінг, Адмін, Чат, Профіль)
  *
  * Props:
- *   activePage   — "kanban" | "map" | "admin"
- *   activeTab    — "tracking" | "settings" | "admin"  (тільки для map)
- *   onTabChange  — fn(tab)  (тільки cloud map)
+ *   activePage   — "kanban" | "map" | "ha"
  *   isAdmin      — bool
  *   logout       — fn  (тільки cloud)
  */
-export default function AppHeader({ activePage, activeTab, onTabChange, isAdmin, logout }) {
+export default function AppHeader({ activePage, isAdmin, logout }) {
   const active = (cls) => `px-4 h-full text-sm border-b-2 flex items-center transition ${cls}`;
   const inactiveCls = "border-transparent text-gray-400 hover:text-white";
   const activeCls   = "border-blue-500 text-white";
 
   // ── Локальний режим ──────────────────────────────────────────
   if (IS_LOCAL) {
-    const items = [
-      { label: "Канбан",        href: "/kanban",              tabKey: null },
-      { label: "Трекінг",       href: "/map",                 tabKey: "tracking" },
-      { label: "Налаштування",  href: "/map?tab=settings",    tabKey: "settings" },
-      { label: "Адмін",         href: "/map?tab=admin",       tabKey: "admin" },
-    ];
-
-    function isActive({ href, tabKey }) {
-      if (activePage === "kanban") return href === "/kanban";
-      if (activePage === "map") return tabKey ? activeTab === tabKey : false;
-      return false;
-    }
-
     return (
       <header className="flex items-center bg-gray-800 border-b border-gray-700 px-4 h-12 flex-shrink-0">
         <a href="/kanban" className="font-bold text-white mr-6 text-sm whitespace-nowrap">🏠 Home Hub</a>
         <nav className="flex flex-1 h-full">
-          {items.map((item) => (
-            <a
-              key={item.label}
-              href={item.href}
-              className={active(isActive(item) ? activeCls : inactiveCls)}
-            >
-              {item.label}
-            </a>
-          ))}
+          <a href="/kanban" className={active(activePage === "kanban" ? activeCls : inactiveCls)}>Канбан</a>
+          <a href="/map" className={active(activePage === "map" ? activeCls : inactiveCls)}>Трекінг</a>
         </nav>
         <a href="/ha" className={active(activePage === "ha" ? activeCls : inactiveCls)}>
           🏡 Дім
