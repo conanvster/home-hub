@@ -428,12 +428,27 @@ function TaskModal({ task, categories, allTasks, onSave, onDelete, onClose, onOp
 }
 
 // ── Картка задачі ──────────────────────────────────────────────
-function TaskCard({ task, categories, onEdit, onDragStart, onDragEnd }) {
+function TaskCard({ task, categories, allTasks, onEdit, onDragStart, onDragEnd }) {
   const prio = prioInfo(task.priority);
   const cat  = catCls(categories, task.category);
   const type = typeInfo(task.type);
-  const isIdea = task.type === "idea";
+  const isIdea    = task.type === "idea";
   const isSubtask = task.type === "subtask";
+
+  // Для ідеї — знаходимо пов'язані задачі-кроки (не ідеї)
+  const linkedIds = (task.linkedTasks || []).map(String);
+  const linkedSteps = isIdea
+    ? linkedIds.map((id) => allTasks.find((t) => String(t._id) === id)).filter(Boolean)
+    : [];
+
+  // Для задачі/підзадачі — знаходимо батьківську ідею серед лінків
+  const parentIdea = !isIdea
+    ? linkedIds
+        .map((id) => allTasks.find((t) => String(t._id) === id && t.type === "idea"))
+        .find(Boolean)
+    : null;
+
+  const STEP_ICONS = ["①","②","③","④","⑤","⑥","⑦","⑧","⑨","⑩"];
 
   return (
     <div
@@ -441,44 +456,86 @@ function TaskCard({ task, categories, onEdit, onDragStart, onDragEnd }) {
       onDragStart={(e) => onDragStart(e, task)}
       onDragEnd={onDragEnd}
       onClick={() => onEdit(task)}
-      className={`rounded-lg p-3 cursor-pointer transition select-none border ${
+      className={`rounded-lg cursor-pointer transition select-none border ${
         isIdea
-          ? "bg-amber-950/40 border-amber-700/60 hover:border-amber-500"
+          ? "bg-amber-950/30 border-amber-700/70 hover:border-amber-500"
           : isSubtask
-          ? "bg-gray-800/60 border-gray-700/50 hover:border-gray-500 ml-2 border-l-2 border-l-gray-500"
+          ? "bg-gray-800/60 border-gray-700/50 hover:border-gray-500 ml-3 border-l-[3px] border-l-gray-500"
           : "bg-gray-800 border-gray-700 hover:border-gray-500"
       }`}
     >
-      <div className="flex gap-1.5 flex-wrap mb-2">
-        {/* Тип (показуємо тільки для idea і subtask, task — за замовчуванням) */}
-        {task.type && task.type !== "task" && (
-          <span className={`text-xs px-1.5 py-0.5 rounded ${type.cls}`}>{type.label}</span>
+      {/* Верхня частина картки */}
+      <div className="p-3">
+        <div className="flex gap-1.5 flex-wrap mb-2">
+          {task.type && task.type !== "task" && (
+            <span className={`text-xs px-1.5 py-0.5 rounded ${type.cls}`}>{type.label}</span>
+          )}
+          <span className={`text-xs px-1.5 py-0.5 rounded ${prio.cls}`}>{prio.label}</span>
+          {task.category && (
+            <span className={`text-xs px-1.5 py-0.5 rounded ${cat}`}>{task.category}</span>
+          )}
+        </div>
+        <p className="text-white text-sm font-medium leading-snug">{task.title}</p>
+        {task.description && (
+          <p className="text-gray-400 text-xs mt-1.5 line-clamp-2 leading-relaxed">{task.description}</p>
         )}
-        <span className={`text-xs px-1.5 py-0.5 rounded ${prio.cls}`}>{prio.label}</span>
-        {task.category && (
-          <span className={`text-xs px-1.5 py-0.5 rounded ${cat}`}>{task.category}</span>
+
+        {/* Батьківська ідея (для task/subtask) */}
+        {parentIdea && (
+          <div className="mt-2 flex items-center gap-1.5">
+            <span className="text-amber-600 text-xs">↑</span>
+            <span className="text-amber-500/80 text-xs truncate">{parentIdea.title}</span>
+          </div>
         )}
+
+        <div className="flex items-center justify-between mt-2">
+          <p className="text-gray-600 text-xs">
+            {new Date(task.createdAt).toLocaleDateString("uk-UA")}
+          </p>
+          {!isIdea && linkedIds.length > 0 && !parentIdea && (
+            <span className="text-gray-500 text-xs">🔗 {linkedIds.length}</span>
+          )}
+        </div>
       </div>
-      <p className="text-white text-sm font-medium leading-snug">{task.title}</p>
-      {task.description && (
-        <p className="text-gray-400 text-xs mt-1 line-clamp-2">{task.description}</p>
+
+      {/* Блок кроків (тільки для ідей з пов'язаними задачами) */}
+      {isIdea && linkedSteps.length > 0 && (
+        <div className="border-t border-amber-800/40 px-3 py-2">
+          <p className="text-amber-600/70 text-[10px] uppercase tracking-wide mb-1.5 font-semibold">
+            Кроки реалізації ({linkedSteps.length})
+          </p>
+          <div className="flex flex-col gap-1">
+            {linkedSteps.slice(0, 4).map((step, i) => {
+              const stepCol = COLUMNS.find((c) => c.id === step.column);
+              const isDone  = step.column === "done" || step.column === "archive";
+              return (
+                <div key={step._id} className="flex items-start gap-1.5">
+                  <span className={`text-[10px] flex-shrink-0 mt-0.5 ${isDone ? "text-green-500" : "text-amber-700"}`}>
+                    {isDone ? "✓" : STEP_ICONS[i] || "·"}
+                  </span>
+                  <span className={`text-xs truncate ${isDone ? "text-gray-500 line-through" : "text-amber-200/80"}`}>
+                    {step.title}
+                  </span>
+                  {step.column !== "idea" && (
+                    <span className="text-gray-600 text-[10px] flex-shrink-0 ml-auto">{stepCol?.label}</span>
+                  )}
+                </div>
+              );
+            })}
+            {linkedSteps.length > 4 && (
+              <p className="text-gray-600 text-[10px] mt-0.5">+{linkedSteps.length - 4} ще...</p>
+            )}
+          </div>
+        </div>
       )}
-      <div className="flex items-center justify-between mt-2">
-        <p className="text-gray-600 text-xs">
-          {new Date(task.createdAt).toLocaleDateString("uk-UA")}
-        </p>
-        {task.linkedTasks?.length > 0 && (
-          <span className="text-gray-500 text-xs">🔗 {task.linkedTasks.length}</span>
-        )}
-      </div>
     </div>
   );
 }
 
 // ── Колонка ────────────────────────────────────────────────────
-function KanbanColumn({ col, tasks, categories, onAdd, onEdit, onDrop, onDragStart, onDragEnd, isDragOver, onDragOver, onDragLeave, fullWidth }) {
+function KanbanColumn({ col, tasks, allTasks, categories, onAdd, onEdit, onDrop, onDragStart, onDragEnd, isDragOver, onDragOver, onDragLeave, fullWidth }) {
   return (
-    <div className={`flex flex-col ${fullWidth ? "w-full" : "min-w-[230px] flex-1 max-w-[310px]"}`}>
+    <div className={`flex flex-col ${fullWidth ? "w-full" : "min-w-[240px] flex-1 max-w-[320px]"}`}>
       <div className="flex items-center justify-between mb-3 px-1">
         <div className="flex items-center gap-2">
           <span className="text-white text-sm font-semibold">{col.label}</span>
@@ -508,6 +565,7 @@ function KanbanColumn({ col, tasks, categories, onAdd, onEdit, onDrop, onDragSta
             key={task._id}
             task={task}
             categories={categories}
+            allTasks={allTasks}
             onEdit={onEdit}
             onDragStart={onDragStart}
             onDragEnd={onDragEnd}
@@ -659,6 +717,7 @@ export default function KanbanPage() {
                   key={col.id}
                   col={col}
                   tasks={tasksByCol(col.id)}
+                  allTasks={tasks}
                   categories={categories}
                   onAdd={openNew}
                   onEdit={openEdit}
@@ -679,6 +738,7 @@ export default function KanbanPage() {
                   key={col.id}
                   col={col}
                   tasks={tasksByCol(col.id)}
+                  allTasks={tasks}
                   categories={categories}
                   onAdd={openNew}
                   onEdit={openEdit}
