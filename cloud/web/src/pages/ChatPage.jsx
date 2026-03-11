@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useLayoutEffect } from "react";
 import { api } from "../services/api";
 import { useAuthStore } from "../store/useAuthStore";
 import AppHeader from "../components/AppHeader";
@@ -37,6 +37,15 @@ export default function ChatPage() {
   const [showSidebar, setShowSidebar] = useState(true); // мобільний стан
   const bottomRef = useRef(null);
   const intervalRef = useRef(null);
+  const textareaRef = useRef(null);
+
+  // Автозмінення висоти textarea
+  useLayoutEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
+  }, [text]);
 
   const isAISelected = selectedUser?._id === "ai";
 
@@ -171,14 +180,14 @@ export default function ChatPage() {
       <div className="max-w-[1024px] w-full mx-auto flex overflow-hidden">
 
         {/* Sidebar — на мобільному: повний екран або прихований */}
-        <div className={`flex-col border-r border-gray-700 flex-shrink-0
+        <div className={`flex-col border-r border-gray-700/60 flex-shrink-0
           ${showSidebar ? "flex w-full" : "hidden"}
           md:flex md:w-64`}>
-          <div className="p-3 border-b border-gray-700 flex flex-col gap-2">
+          <div className="p-3 border-b border-gray-700/60 flex flex-col gap-2">
             <button
               onClick={() => handleSelectUser(null)}
-              className={`w-full text-left px-3 py-2 rounded-lg text-sm transition ${
-                selectedUser === null ? "bg-blue-600 text-white" : "text-gray-300 hover:bg-gray-700"
+              className={`w-full text-left px-3 py-2 rounded-xl text-sm transition ${
+                selectedUser === null ? "bg-blue-600 text-white" : "text-gray-300 hover:bg-gray-700/60"
               }`}
             >
               💬 Загальний чат
@@ -188,8 +197,8 @@ export default function ChatPage() {
             {IS_LOCAL && (
               <button
                 onClick={() => handleSelectUser(AI_USER)}
-                className={`w-full text-left px-3 py-2 rounded-lg text-sm transition ${
-                  isAISelected ? "bg-purple-700 text-white" : "text-gray-300 hover:bg-gray-700"
+                className={`w-full text-left px-3 py-2 rounded-xl text-sm transition ${
+                  isAISelected ? "bg-purple-700 text-white" : "text-gray-300 hover:bg-gray-700/60"
                 }`}
               >
                 🤖 AI Агент
@@ -200,10 +209,10 @@ export default function ChatPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Пошук користувача..."
-              className="bg-gray-800 border border-gray-600 rounded-lg px-3 py-1.5 text-sm text-white placeholder-gray-500 outline-none focus:border-blue-500"
+              className="bg-gray-800 border border-gray-700 rounded-xl px-3 py-1.5 text-sm text-white placeholder-gray-500 outline-none focus:border-blue-500 transition"
             />
           </div>
-          <div className="flex-1 overflow-y-auto p-2 flex flex-col gap-1">
+          <div className="flex-1 overflow-y-auto chat-scroll p-2 flex flex-col gap-1">
             <p className="text-gray-500 text-xs px-2 py-1">Особисті повідомлення</p>
             {users.map((u) => {
               const unreadCount = unread[u._id] || 0;
@@ -211,8 +220,8 @@ export default function ChatPage() {
                 <button
                   key={u._id}
                   onClick={() => handleSelectUser(u)}
-                  className={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center justify-between transition ${
-                    selectedUser?._id === u._id ? "bg-blue-600 text-white" : "text-gray-300 hover:bg-gray-700"
+                  className={`w-full text-left px-3 py-2 rounded-xl text-sm flex items-center justify-between transition ${
+                    selectedUser?._id === u._id ? "bg-blue-600 text-white" : "text-gray-300 hover:bg-gray-700/60"
                   }`}
                 >
                   <span className="truncate">👤 {u.email.split("@")[0]}</span>
@@ -236,7 +245,7 @@ export default function ChatPage() {
           md:flex`}>
 
           {/* Хедер чату — кнопка "назад" лише на мобільному */}
-          <div className="px-4 py-3 border-b border-gray-700 font-semibold text-sm flex items-center gap-2">
+          <div className="px-4 py-3 border-b border-gray-700/60 font-semibold text-sm flex items-center gap-2">
             <button
               onClick={() => setShowSidebar(true)}
               className="md:hidden text-gray-400 hover:text-white mr-1 text-base leading-none"
@@ -249,7 +258,7 @@ export default function ChatPage() {
             )}
           </div>
 
-          <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
+          <div className="flex-1 overflow-y-auto chat-scroll p-4 flex flex-col gap-3">
             {messages.length === 0 && !isAISelected && (
               <p className="text-gray-500 text-sm text-center mt-10">Немає повідомлень. Напишіть перше!</p>
             )}
@@ -275,28 +284,27 @@ export default function ChatPage() {
             <div ref={bottomRef} />
           </div>
 
-          <div className="p-3 border-t border-gray-700 flex gap-2">
+          <div className="p-3 border-t border-gray-700/60 flex gap-2 items-end">
             <textarea
+              ref={textareaRef}
               value={text}
               onChange={(e) => setText(e.target.value)}
               onKeyDown={onKeyDown}
-              placeholder={isAISelected
-                ? "Запитай AI агента..."
-                : "Повідомлення..."}
+              placeholder={isAISelected ? "Запитай AI агента..." : "Повідомлення..."}
               rows={1}
-              className={`flex-1 bg-gray-800 border rounded-xl px-4 py-2 text-sm text-white placeholder-gray-500 outline-none resize-none ${
-                isAISelected ? "border-purple-700 focus:border-purple-500" : "border-gray-600 focus:border-blue-500"
+              className={`flex-1 bg-gray-800 border rounded-2xl px-4 py-2.5 text-sm text-white placeholder-gray-500 outline-none resize-none overflow-hidden transition ${
+                isAISelected ? "border-purple-700/70 focus:border-purple-500" : "border-gray-700 focus:border-blue-500"
               }`}
-              style={{ minHeight: 40, maxHeight: 120 }}
+              style={{ minHeight: 42, maxHeight: 160 }}
             />
             <button
               onClick={send}
               disabled={!text.trim() || sending}
-              className={`disabled:opacity-40 text-white px-4 rounded-xl text-sm font-semibold transition ${
+              className={`disabled:opacity-40 text-white w-10 h-10 flex-shrink-0 rounded-2xl text-sm font-semibold flex items-center justify-center transition ${
                 isAISelected ? "bg-purple-700 hover:bg-purple-600" : "bg-blue-600 hover:bg-blue-500"
               }`}
             >
-              {sending ? "..." : "▶"}
+              {sending ? "·" : "▶"}
             </button>
           </div>
         </div>
