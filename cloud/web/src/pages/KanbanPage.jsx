@@ -532,50 +532,246 @@ function TaskCard({ task, categories, allTasks, onEdit, onDragStart, onDragEnd }
   );
 }
 
-// ── Колонка ────────────────────────────────────────────────────
-function KanbanColumn({ col, tasks, allTasks, categories, onAdd, onEdit, onDrop, onDragStart, onDragEnd, isDragOver, onDragOver, onDragLeave, fullWidth }) {
+// ── Компактна картка задачі у swimlane ────────────────────────
+function SwimlaneTaskCard({ task, categories, collapsed, onCollapse, onEdit, onDragStart, onDragEnd, isReady }) {
+  const prio = prioInfo(task.priority);
+  const type = typeInfo(task.type);
+  const isSubtask = task.type === "subtask";
+  const isBlocked    = !isReady && task.column === "idea";
+  const canStart     = isReady  && task.column === "idea";
+  const hasBody      = !!(task.description);
+
   return (
-    <div className={`flex flex-col ${fullWidth ? "w-full" : "min-w-[240px] flex-1 max-w-[320px]"}`}>
-      <div className="flex items-center justify-between mb-3 px-1">
-        <div className="flex items-center gap-2">
-          <span className="text-white text-sm font-semibold">{col.label}</span>
-          <span className="text-gray-500 text-xs bg-gray-700 rounded-full px-2">{tasks.length}</span>
+    <div
+      draggable
+      onDragStart={(e) => onDragStart(e, task)}
+      onDragEnd={onDragEnd}
+      onClick={() => onEdit(task)}
+      className={`mb-1.5 rounded-lg border cursor-pointer transition select-none ${
+        isSubtask
+          ? "ml-4 border-l-[3px] border-l-gray-500 bg-gray-800/50 border-gray-700/40 hover:border-gray-600"
+          : "bg-gray-800/90 border-gray-700 hover:border-gray-500"
+      } ${isBlocked ? "opacity-50" : ""}`}
+    >
+      <div className="flex items-start gap-1.5 px-2.5 py-2">
+        {/* Collapse toggle */}
+        {hasBody && (
+          <button
+            onClick={onCollapse}
+            className="text-gray-600 hover:text-gray-400 text-[10px] flex-shrink-0 mt-0.5 leading-none w-3"
+          >
+            {collapsed ? "▶" : "▼"}
+          </button>
+        )}
+        {!hasBody && <span className="w-3 flex-shrink-0" />}
+
+        <div className="flex-1 min-w-0">
+          <div className="flex gap-1 flex-wrap mb-1">
+            {isSubtask && <span className={`text-[10px] px-1 py-0.5 rounded ${type.cls}`}>{type.label}</span>}
+            <span className={`text-[10px] px-1 py-0.5 rounded ${prio.cls}`}>{prio.label}</span>
+            {canStart  && <span className="text-[10px] text-green-500 font-semibold">▶ Старт</span>}
+            {isBlocked && <span className="text-[10px] text-gray-600">⏳ Чекає</span>}
+          </div>
+          <p className="text-white text-xs font-medium leading-snug">{task.title}</p>
+          {!collapsed && hasBody && (
+            <p className="text-gray-500 text-[11px] mt-1 line-clamp-2 leading-relaxed">{task.description}</p>
+          )}
         </div>
-        <button
-          onClick={() => onAdd(col.id)}
-          className="text-gray-400 hover:text-white w-6 h-6 flex items-center justify-center rounded hover:bg-gray-700 transition text-lg leading-none"
-          title="Додати задачу"
-        >
-          +
-        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Swimlane рядок для ідеї ─────────────────────────────────────
+function IdeaSwimlane({
+  idea, linkedTasks, categories, collapsed, collapsedTasks,
+  onToggle, onToggleTask, onEdit, onAdd,
+  onDrop, onDragStart, onDragEnd, dragOverCol, onDragOver, onDragLeave,
+}) {
+  const prio     = prioInfo(idea.priority);
+  const isActive = idea.column !== "idea"; // ідея вже стартувала
+  const total    = linkedTasks.length;
+  const done     = linkedTasks.filter((t) => ["done", "archive"].includes(t.column)).length;
+
+  const [mobileTab, setMobileTab] = useState("idea");
+
+  return (
+    <div className={`mb-3 rounded-xl overflow-hidden border ${
+      isActive ? "border-amber-600/60" : "border-amber-800/35"
+    }`}>
+
+      {/* ── Заголовок ──────────────────────────────────────── */}
+      <div
+        className={`flex items-center gap-3 px-4 py-3 cursor-pointer select-none transition ${
+          isActive ? "bg-amber-900/35 hover:bg-amber-900/50" : "bg-amber-950/25 hover:bg-amber-950/45"
+        }`}
+        onClick={onToggle}
+      >
+        <span className="text-amber-400 text-base flex-shrink-0">💡</span>
+
+        <div className="flex-1 min-w-0">
+          <p className="text-white text-sm font-semibold truncate">{idea.title}</p>
+          {idea.category && (
+            <p className="text-amber-800/70 text-xs truncate">{idea.category}</p>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <span className={`text-xs px-1.5 py-0.5 rounded ${prio.cls}`}>{prio.label}</span>
+
+          {total > 0 && (
+            <div className="flex items-center gap-1.5">
+              <div className="w-16 h-1 bg-gray-700 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-green-500 rounded-full transition-all"
+                  style={{ width: `${Math.round((done / total) * 100)}%` }}
+                />
+              </div>
+              <span className="text-gray-500 text-xs">{done}/{total}</span>
+            </div>
+          )}
+
+          <span className={`text-xs px-2 py-0.5 rounded-full border hidden sm:inline ${
+            isActive
+              ? "border-amber-600 text-amber-400 bg-amber-900/30"
+              : "border-gray-700 text-gray-500"
+          }`}>
+            {isActive ? "🔨 Активна" : "📋 Планування"}
+          </span>
+
+          <span className="text-gray-600 text-xs">{collapsed ? "▶" : "▼"}</span>
+        </div>
       </div>
 
+      {/* ── Тіло: десктоп — 4 міні-колонки ────────────────── */}
+      {!collapsed && (
+        <>
+          <div className="hidden md:flex border-t border-amber-800/20 bg-gray-950/30">
+            {COLUMNS.map((col, i) => {
+              const isIdeaCol = col.id === "idea";
+              const colTasks  = linkedTasks
+                .filter((t) => t.column === col.id)
+                .sort((a, b) => a.order - b.order);
+
+              return (
+                <div
+                  key={col.id}
+                  onDragOver={(e) => onDragOver(e, col.id)}
+                  onDragLeave={onDragLeave}
+                  onDrop={(e) => onDrop(e, col.id)}
+                  className={`flex-1 min-w-0 p-2 transition-colors ${
+                    i < 3 ? "border-r border-gray-800/40" : ""
+                  } ${dragOverCol === col.id ? "bg-blue-900/20" : ""}`}
+                >
+                  {/* Опис ідеї у першій колонці */}
+                  {isIdeaCol && (
+                    <div
+                      onClick={() => onEdit(idea)}
+                      className="mb-2 p-2 rounded-lg bg-amber-950/30 hover:bg-amber-900/30 border border-amber-900/30 cursor-pointer transition"
+                    >
+                      {idea.description ? (
+                        <p className="text-amber-200/60 text-[11px] leading-relaxed line-clamp-5">{idea.description}</p>
+                      ) : (
+                        <p className="text-amber-900/60 text-[11px] italic">Додати опис...</p>
+                      )}
+                      <p className="text-amber-900/50 text-[10px] mt-1">{new Date(idea.createdAt).toLocaleDateString("uk-UA")}</p>
+                    </div>
+                  )}
+
+                  {/* Задачі цієї колонки */}
+                  {colTasks.map((task) => (
+                    <SwimlaneTaskCard
+                      key={task._id}
+                      task={task}
+                      categories={categories}
+                      collapsed={collapsedTasks.has(String(task._id))}
+                      onCollapse={(e) => { e.stopPropagation(); onToggleTask(task._id); }}
+                      onEdit={onEdit}
+                      onDragStart={onDragStart}
+                      onDragEnd={onDragEnd}
+                      isReady={isActive}
+                    />
+                  ))}
+
+                  {/* Кнопка + */}
+                  <button
+                    onClick={() => onAdd(col.id)}
+                    className="w-full text-gray-700 hover:text-gray-500 text-xs py-1 mt-0.5 rounded hover:bg-gray-800/30 transition"
+                  >
+                    +
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* ── Тіло: мобільний — таби ───────────────────────── */}
+          <div className="md:hidden border-t border-amber-800/20">
+            <div className="flex border-b border-gray-800/60">
+              {COLUMNS.map((col) => {
+                const cnt = col.id === "idea" ? 1 : linkedTasks.filter((t) => t.column === col.id).length;
+                return (
+                  <button
+                    key={col.id}
+                    onClick={() => setMobileTab(col.id)}
+                    className={`flex-1 px-1 py-2 text-[10px] border-b-2 transition ${
+                      mobileTab === col.id ? "border-amber-500 text-white" : "border-transparent text-gray-600"
+                    }`}
+                  >
+                    {col.label.split(" ")[0]} <span className="text-gray-700">{cnt > 0 ? cnt : ""}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="p-2">
+              {mobileTab === "idea" && (
+                <div onClick={() => onEdit(idea)} className="p-2 rounded-lg bg-amber-950/30 border border-amber-900/30 cursor-pointer mb-2">
+                  <p className="text-amber-200/60 text-xs leading-relaxed">
+                    {idea.description || <span className="italic text-amber-900/60">Без опису</span>}
+                  </p>
+                </div>
+              )}
+              {linkedTasks.filter((t) => t.column === mobileTab).map((task) => (
+                <SwimlaneTaskCard
+                  key={task._id}
+                  task={task}
+                  categories={categories}
+                  collapsed={collapsedTasks.has(String(task._id))}
+                  onCollapse={() => onToggleTask(task._id)}
+                  onEdit={onEdit}
+                  onDragStart={onDragStart}
+                  onDragEnd={onDragEnd}
+                  isReady={isActive}
+                />
+              ))}
+              <button onClick={() => onAdd(mobileTab)} className="w-full text-gray-700 text-xs py-2">+</button>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ── Проста колонка для незгрупованих задач ─────────────────────
+function SimpleColumn({ col, tasks, allTasks, categories, onAdd, onEdit, onDrop, onDragStart, onDragEnd, isDragOver, onDragOver, onDragLeave }) {
+  return (
+    <div className="flex flex-col min-w-0">
+      <div className="flex items-center justify-between mb-2 px-1">
+        <span className="text-gray-500 text-xs font-medium">{col.label}</span>
+        <button onClick={() => onAdd(col.id)} className="text-gray-600 hover:text-gray-400 text-sm w-5 h-5 flex items-center justify-center rounded hover:bg-gray-800 transition">+</button>
+      </div>
       <div
         onDragOver={onDragOver}
         onDragLeave={onDragLeave}
         onDrop={(e) => onDrop(e, col.id)}
-        className={`flex flex-col gap-2 flex-1 min-h-[120px] rounded-xl p-2 transition-colors ${
-          isDragOver
-            ? "bg-blue-900/20 border-2 border-blue-500/50 border-dashed"
-            : "bg-gray-900/30 border-2 border-transparent"
+        className={`flex flex-col gap-2 flex-1 min-h-[60px] rounded-xl p-1.5 transition-colors ${
+          isDragOver ? "bg-blue-900/20 border border-blue-500/40 border-dashed" : "bg-gray-900/20 border border-transparent"
         }`}
       >
         {tasks.map((task) => (
-          <TaskCard
-            key={task._id}
-            task={task}
-            categories={categories}
-            allTasks={allTasks}
-            onEdit={onEdit}
-            onDragStart={onDragStart}
-            onDragEnd={onDragEnd}
-          />
+          <TaskCard key={task._id} task={task} categories={categories} allTasks={allTasks} onEdit={onEdit} onDragStart={onDragStart} onDragEnd={onDragEnd} />
         ))}
-        {tasks.length === 0 && (
-          <div className="flex-1 flex items-center justify-center text-gray-600 text-xs">
-            Порожньо
-          </div>
-        )}
       </div>
     </div>
   );
@@ -586,9 +782,12 @@ export default function KanbanPage() {
   const [tasks, setTasks] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [modal, setModal] = useState(null);       // null | { task }
+  const [modal, setModal] = useState(null);
   const [showCats, setShowCats] = useState(false);
   const [dragOverCol, setDragOverCol] = useState(null);
+  const [dragOverIdeaId, setDragOverIdeaId] = useState(null);
+  const [collapsedIdeas, setCollapsedIdeas] = useState(new Set());
+  const [collapsedTasks, setCollapsedTasks] = useState(new Set());
   const dragTask = useRef(null);
 
   async function load() {
@@ -600,6 +799,24 @@ export default function KanbanPage() {
 
   useEffect(() => { load(); }, []);
 
+  // ── Collapse ────────────────────────────────────────────────
+  function toggleIdea(id) {
+    setCollapsedIdeas((prev) => {
+      const next = new Set(prev);
+      if (next.has(String(id))) next.delete(String(id));
+      else next.add(String(id));
+      return next;
+    });
+  }
+  function toggleTask(id) {
+    setCollapsedTasks((prev) => {
+      const next = new Set(prev);
+      if (next.has(String(id))) next.delete(String(id));
+      else next.add(String(id));
+      return next;
+    });
+  }
+
   // ── Drag & Drop ────────────────────────────────────────────
   function handleDragStart(e, task) {
     dragTask.current = task;
@@ -608,17 +825,23 @@ export default function KanbanPage() {
   function handleDragEnd() {
     dragTask.current = null;
     setDragOverCol(null);
+    setDragOverIdeaId(null);
   }
-  function handleDragOver(e, colId) {
+  function handleDragOver(e, colId, ideaId) {
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
     setDragOverCol(colId);
+    setDragOverIdeaId(ideaId || null);
   }
-  function handleDragLeave() { setDragOverCol(null); }
+  function handleDragLeave() {
+    setDragOverCol(null);
+    setDragOverIdeaId(null);
+  }
 
   async function handleDrop(e, colId) {
     e.preventDefault();
     setDragOverCol(null);
+    setDragOverIdeaId(null);
     const task = dragTask.current;
     if (!task || task.column === colId) return;
     setTasks((prev) => prev.map((t) => (t._id === task._id ? { ...t, column: colId } : t)));
@@ -630,7 +853,9 @@ export default function KanbanPage() {
   }
 
   // ── Задачі ─────────────────────────────────────────────────
-  function openNew(colId) { setModal({ task: { column: colId } }); }
+  function openNew(colId, defaultType) {
+    setModal({ task: { column: colId, type: defaultType || "task" } });
+  }
   function openEdit(task) { setModal({ task }); }
 
   async function handleSave(form) {
@@ -662,10 +887,26 @@ export default function KanbanPage() {
     setCategories(updated);
   }
 
-  const tasksByCol = (colId) =>
-    tasks.filter((t) => t.column === colId).sort((a, b) => a.order - b.order);
+  // ── Групування задач ────────────────────────────────────────
+  // Ідеї, що ще не в архіві — відображаються як swimlane
+  const activeIdeas = tasks
+    .filter((t) => t.type === "idea" && t.column !== "archive")
+    .sort((a, b) => a.order - b.order);
 
-  const [activeCol, setActiveCol] = useState("idea"); // мобільний таб
+  // Ідентифікатори задач, які вже прив'язані до якоїсь ідеї
+  const linkedToIdeaIds = new Set(
+    activeIdeas.flatMap((idea) => (idea.linkedTasks || []).map(String))
+  );
+
+  // Задачі без прив'язки до активних ідей (архівні ідеї + незгруповані)
+  const ungroupedTasks = tasks
+    .filter((t) => !linkedToIdeaIds.has(String(t._id)) && t.type !== "idea")
+    .sort((a, b) => a.order - b.order);
+
+  // Архівні ідеї теж відображаємо як звичайні картки в ungrouped
+  const archivedIdeas = tasks
+    .filter((t) => t.type === "idea" && t.column === "archive")
+    .sort((a, b) => a.order - b.order);
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-900 text-white">
@@ -674,85 +915,153 @@ export default function KanbanPage() {
 
       {/* Тулбар */}
       <div className="border-b border-gray-800">
-        <div className="max-w-[1024px] mx-auto px-4 py-2 flex items-center gap-4">
+        <div className="max-w-[1400px] mx-auto px-4 py-2 flex items-center gap-4">
           <button
             onClick={() => setShowCats(true)}
             className="text-gray-400 hover:text-white text-xs transition"
           >
             ⚙ Категорії
           </button>
+          <button
+            onClick={() => openNew("idea", "idea")}
+            className="text-amber-500 hover:text-amber-300 text-xs transition"
+          >
+            + Нова ідея
+          </button>
+          <button
+            onClick={() => openNew("idea", "task")}
+            className="text-blue-400 hover:text-blue-300 text-xs transition"
+          >
+            + Нова задача
+          </button>
         </div>
       </div>
 
-      {/* Мобільні таби колонок */}
-      <div className="md:hidden flex border-b border-gray-800 overflow-x-auto">
-        {COLUMNS.map((col) => (
-          <button
-            key={col.id}
-            onClick={() => setActiveCol(col.id)}
-            className={`flex-1 px-3 py-2.5 text-xs font-medium whitespace-nowrap transition border-b-2 ${
-              activeCol === col.id
-                ? "border-blue-500 text-white"
-                : "border-transparent text-gray-400 hover:text-gray-200"
-            }`}
-          >
-            {col.label}
-            <span className="ml-1 text-gray-500 text-xs">
-              {tasksByCol(col.id).length}
-            </span>
-          </button>
-        ))}
-      </div>
-
-      {/* Дошка — десктоп: горизонтальні колонки / мобільний: одна колонка */}
-      <div className="flex-1 overflow-x-auto p-4 md:p-6">
+      {/* Дошка */}
+      <div className="flex-1 p-3 md:p-5">
         {loading ? (
           <div className="text-gray-400 text-sm">Завантаження...</div>
         ) : (
-          <>
-            {/* Десктоп */}
-            <div className="hidden md:flex gap-5 max-w-[1024px] mx-auto h-full">
-              {COLUMNS.map((col) => (
-                <KanbanColumn
+          <div className="max-w-[1400px] mx-auto">
+
+            {/* ── Заголовки колонок (десктоп) ─────────────────── */}
+            <div className="hidden md:grid grid-cols-4 gap-0 mb-2 border border-gray-800 rounded-xl overflow-hidden">
+              {COLUMNS.map((col, i) => (
+                <div
                   key={col.id}
-                  col={col}
-                  tasks={tasksByCol(col.id)}
-                  allTasks={tasks}
-                  categories={categories}
-                  onAdd={openNew}
-                  onEdit={openEdit}
-                  onDrop={handleDrop}
-                  onDragStart={handleDragStart}
-                  onDragEnd={handleDragEnd}
-                  onDragOver={(e) => handleDragOver(e, col.id)}
-                  onDragLeave={handleDragLeave}
-                  isDragOver={dragOverCol === col.id}
-                />
+                  className={`px-3 py-2 text-xs text-gray-500 font-medium bg-gray-800/40 ${
+                    i < 3 ? "border-r border-gray-800" : ""
+                  }`}
+                >
+                  {col.label}
+                </div>
               ))}
             </div>
 
-            {/* Мобільний — тільки активна колонка */}
-            <div className="md:hidden">
-              {COLUMNS.filter((col) => col.id === activeCol).map((col) => (
-                <KanbanColumn
-                  key={col.id}
-                  col={col}
-                  tasks={tasksByCol(col.id)}
-                  allTasks={tasks}
+            {/* ── Swimlane рядки для активних ідей ──────────────── */}
+            {activeIdeas.map((idea) => {
+              const linkedTasks = (idea.linkedTasks || [])
+                .map((id) => tasks.find((t) => String(t._id) === String(id)))
+                .filter(Boolean);
+
+              return (
+                <IdeaSwimlane
+                  key={idea._id}
+                  idea={idea}
+                  linkedTasks={linkedTasks}
                   categories={categories}
-                  onAdd={openNew}
+                  collapsed={collapsedIdeas.has(String(idea._id))}
+                  collapsedTasks={collapsedTasks}
+                  onToggle={() => toggleIdea(idea._id)}
+                  onToggleTask={toggleTask}
                   onEdit={openEdit}
+                  onAdd={(colId) => openNew(colId)}
                   onDrop={handleDrop}
                   onDragStart={handleDragStart}
                   onDragEnd={handleDragEnd}
-                  onDragOver={(e) => handleDragOver(e, col.id)}
+                  dragOverCol={dragOverIdeaId === String(idea._id) ? dragOverCol : null}
+                  onDragOver={(e, colId) => handleDragOver(e, colId, String(idea._id))}
                   onDragLeave={handleDragLeave}
-                  isDragOver={dragOverCol === col.id}
-                  fullWidth
                 />
-              ))}
-            </div>
-          </>
+              );
+            })}
+
+            {/* ── Незгруповані задачі ────────────────────────────── */}
+            {(ungroupedTasks.length > 0 || archivedIdeas.length > 0) && (
+              <div className="mt-4">
+                {(activeIdeas.length > 0) && (
+                  <p className="text-gray-600 text-xs mb-2 px-1">Інші задачі</p>
+                )}
+                {/* Десктоп: 4 колонки */}
+                <div className="hidden md:grid grid-cols-4 gap-3">
+                  {COLUMNS.map((col) => {
+                    const colTasks = [
+                      ...ungroupedTasks.filter((t) => t.column === col.id),
+                      ...archivedIdeas.filter((t) => t.column === col.id),
+                    ];
+                    return (
+                      <SimpleColumn
+                        key={col.id}
+                        col={col}
+                        tasks={colTasks}
+                        allTasks={tasks}
+                        categories={categories}
+                        onAdd={() => openNew(col.id)}
+                        onEdit={openEdit}
+                        onDrop={handleDrop}
+                        onDragStart={handleDragStart}
+                        onDragEnd={handleDragEnd}
+                        isDragOver={dragOverCol === col.id && !dragOverIdeaId}
+                        onDragOver={(e) => handleDragOver(e, col.id, null)}
+                        onDragLeave={handleDragLeave}
+                      />
+                    );
+                  })}
+                </div>
+                {/* Мобільний: прокручуваний список */}
+                <div className="md:hidden flex flex-col gap-2">
+                  {[...ungroupedTasks, ...archivedIdeas].map((task) => (
+                    <TaskCard
+                      key={task._id}
+                      task={task}
+                      categories={categories}
+                      allTasks={tasks}
+                      onEdit={openEdit}
+                      onDragStart={handleDragStart}
+                      onDragEnd={handleDragEnd}
+                    />
+                  ))}
+                  <button
+                    onClick={() => openNew("idea")}
+                    className="w-full py-3 text-gray-600 hover:text-gray-400 text-sm border border-dashed border-gray-800 hover:border-gray-700 rounded-xl transition"
+                  >
+                    + Додати задачу
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Порожній стан */}
+            {activeIdeas.length === 0 && ungroupedTasks.length === 0 && archivedIdeas.length === 0 && (
+              <div className="text-center py-20">
+                <p className="text-gray-600 text-sm mb-4">Дошка порожня</p>
+                <div className="flex items-center justify-center gap-3">
+                  <button
+                    onClick={() => openNew("idea", "idea")}
+                    className="px-4 py-2 text-sm bg-amber-900/40 hover:bg-amber-900/60 text-amber-400 border border-amber-800/40 rounded-lg transition"
+                  >
+                    💡 Додати ідею
+                  </button>
+                  <button
+                    onClick={() => openNew("idea", "task")}
+                    className="px-4 py-2 text-sm bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg transition"
+                  >
+                    ✦ Додати задачу
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         )}
       </div>
 
