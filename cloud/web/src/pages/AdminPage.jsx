@@ -29,6 +29,11 @@ function UsersTab() {
     load();
   }
 
+  async function toggleAI(user) {
+    await api.adminUpdateUser(user._id, { aiAgentAccess: !user.aiAgentAccess });
+    load();
+  }
+
   async function deleteUser(user) {
     if (!confirm(`Видалити ${user.email}?`)) return;
     await api.adminDeleteUser(user._id);
@@ -103,6 +108,8 @@ function UsersTab() {
             <th className="text-left py-2 px-3">Email</th>
             <th className="text-left py-2 px-3">Роль</th>
             <th className="text-left py-2 px-3">Статус</th>
+            <th className="text-left py-2 px-3">Email</th>
+            <th className="text-left py-2 px-3">AI</th>
             <th className="text-left py-2 px-3">Telegram</th>
             <th className="text-left py-2 px-3">Дата</th>
             <th className="py-2 px-3"></th>
@@ -121,6 +128,23 @@ function UsersTab() {
                 {u.status === "pending"
                   ? <span className="text-yellow-400 text-xs">⏳ Очікує</span>
                   : <span className="text-green-400 text-xs">✓ Активний</span>}
+              </td>
+              <td className="py-2 px-3">
+                {u.emailVerified
+                  ? <span className="text-green-400 text-xs">✓</span>
+                  : <span className="text-yellow-400 text-xs">✗</span>}
+              </td>
+              <td className="py-2 px-3">
+                {u._id !== currentUser?.id ? (
+                  <button
+                    onClick={() => toggleAI(u)}
+                    className={`text-xs px-2 py-0.5 rounded-full transition ${u.aiAgentAccess ? "bg-purple-900 text-purple-300" : "bg-gray-700 text-gray-500"}`}
+                  >
+                    {u.aiAgentAccess ? "✓ ON" : "OFF"}
+                  </button>
+                ) : (
+                  <span className="text-green-400 text-xs">✓ ON</span>
+                )}
               </td>
               <td className="py-2 px-3">
                 {u.telegramId

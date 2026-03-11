@@ -51,11 +51,17 @@ router.post("/invite", auth, requireAdmin, async (req, res) => {
   }
 });
 
-// PATCH /api/admin/users/:id — змінити роль
+// PATCH /api/admin/users/:id — змінити роль та/або aiAgentAccess
 router.patch("/users/:id", auth, requireAdmin, async (req, res) => {
-  const { role } = req.body;
-  if (!["admin", "member", "viewer"].includes(role)) return res.status(400).json({ error: "Invalid role" });
-  const user = await User.findByIdAndUpdate(req.params.id, { role }, { new: true }).select("-password");
+  const updates = {};
+  if (req.body.role) {
+    if (!["admin", "member", "viewer"].includes(req.body.role)) return res.status(400).json({ error: "Invalid role" });
+    updates.role = req.body.role;
+  }
+  if (typeof req.body.aiAgentAccess === "boolean") {
+    updates.aiAgentAccess = req.body.aiAgentAccess;
+  }
+  const user = await User.findByIdAndUpdate(req.params.id, updates, { new: true }).select("-password");
   if (!user) return res.status(404).json({ error: "User not found" });
   res.json(user);
 });

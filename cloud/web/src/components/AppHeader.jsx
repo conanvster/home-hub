@@ -1,5 +1,48 @@
+import { useState, useEffect } from "react";
 import { IS_LOCAL, VERSION, IMMICH_URL, FILEBROWSER_URL, HA_URL } from "../config";
 import { useAuthStore } from "../store/useAuthStore";
+import { api } from "../services/api";
+
+function VerificationBanner() {
+  const [visible, setVisible] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+
+  useEffect(() => {
+    api.getMe()
+      .then(me => { if (!me.emailVerified) setVisible(true); })
+      .catch(() => {});
+  }, []);
+
+  if (!visible) return null;
+
+  async function resend() {
+    setSending(true);
+    try {
+      await api.resendVerification();
+      setSent(true);
+    } finally {
+      setSending(false);
+    }
+  }
+
+  return (
+    <div className="bg-yellow-900/80 border-b border-yellow-700 px-4 py-2 flex items-center justify-between text-sm">
+      <span className="text-yellow-200">
+        ⚠️ Підтвердіть email — у вас є 12 годин з моменту реєстрації
+      </span>
+      <div className="flex items-center gap-3">
+        {sent
+          ? <span className="text-green-400 text-xs">✓ Лист надіслано</span>
+          : <button onClick={resend} disabled={sending} className="text-yellow-300 hover:text-yellow-100 text-xs underline disabled:opacity-50">
+              {sending ? "Надсилання..." : "Надіслати повторно"}
+            </button>
+        }
+        <button onClick={() => setVisible(false)} className="text-yellow-500 hover:text-yellow-300 text-xs">✕</button>
+      </div>
+    </div>
+  );
+}
 
 /**
  * Єдиний хедер для всього додатку.
@@ -51,6 +94,7 @@ export default function AppHeader({ activePage, constrained = false }) {
   // ── Хмарний режим ────────────────────────────────────────────
   return (
     <header className="bg-gray-800 border-b border-gray-700 flex-shrink-0">
+      <VerificationBanner />
       <div className={innerCls}>
         <a href="/" className="font-bold text-white mr-3 sm:mr-6 text-sm whitespace-nowrap">🏠 Home Hub</a>
         <nav className="flex flex-1 h-full">

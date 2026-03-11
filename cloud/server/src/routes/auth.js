@@ -3,7 +3,7 @@ const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const auth = require("../middleware/auth");
-const { sendPasswordReset, sendTelegramCode } = require("../services/email");
+const { sendPasswordReset, sendTelegramCode, sendVerification } = require("../services/email");
 
 // POST /api/auth/login
 router.post("/login", async (req, res) => {
@@ -33,7 +33,18 @@ router.post("/register", async (req, res) => {
   const exists = await User.findOne({ email });
   if (exists) return res.status(409).json({ error: "Email already registered" });
 
-  const user = await User.create({ email, password, role: "viewer" });
+  // Generate verification token
+  const verificationToken = crypto.randomBytes(32).toString("hex");
+  const user = await User.create({
+    email, password, role: "viewer",
+    verificationToken,
+    verificationTokenExpires: new Date(Date.now() + 12 * 60 * 60 * 1000), // 12 hours
+  });
+
+  // Send verification email (don't block registration if it fails)
+  sendVerification(email, verificationToken).catch(err => {
+    console.error("[Email] Failed to send verification:", err.message);
+  });
 
   const token = jwt.sign(
     { id: user._id, email: user.email, role: user.role },
@@ -88,6 +99,44 @@ router.post("/reset-password", async (req, res) => {
   res.json({ message: "Password updated successfully" });
 });
 
+// GET /api/auth/verify-email?token=...
+router.get("/verify-email", async (req, res) => {
+  const { token } = req.query;
+  if (!token) return res.status(400).json({ error: "Token required" });
+
+  const user = await User.findOne({
+    verificationToken: token,
+    verificationTokenExpires: { $gt: new Date() },
+  });
+  if (!user) return res.status(400).json({ error: "Посилання недійсне або прострочене" });
+
+  user.emailVerified = true;
+  user.verificationToken = null;
+  user.verificationTokenExpires = null;
+  await user.save();
+
+  res.json({ message: "Email підтверджено успішно" });
+});
+
+// POST /api/auth/resend-verification
+router.post("/resend-verification", auth, async (req, res) => {
+  const user = await User.findById(req.user.id);
+  if (!user) return res.status(404).json({ error: "User not found" });
+  if (user.emailVerified) return res.json({ message: "Email вже підтверджено" });
+
+  const verificationToken = crypto.randomBytes(32).toString("hex");
+  user.verificationToken = verificationToken;
+  user.verificationTokenExpires = new Date(Date.now() + 12 * 60 * 60 * 1000);
+  await user.save();
+
+  try {
+    await sendVerification(user.email, verificationToken);
+    res.json({ message: "Лист відправлено" });
+  } catch (err) {
+    res.status(500).json({ error: "Не вдалося надіслати лист" });
+  }
+});
+
 // POST /api/auth/telegram-link — згенерувати код для прив'язки через сайт (Варіант C)
 router.post("/telegram-link", auth, async (req, res) => {
   const code = Math.floor(100000 + Math.random() * 900000).toString();
@@ -107,7 +156,7 @@ router.delete("/telegram-link", auth, async (req, res) => {
 
 // GET /api/auth/me
 router.get("/me", auth, async (req, res) => {
-  const user = await User.findById(req.user.id).select("email role telegramId");
+  const user = await User.findById(req.user.id).select("email role telegramId emailVerified aiAgentAccess");
   if (!user) return res.status(404).json({ error: "Not found" });
   res.json(user);
 });

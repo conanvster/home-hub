@@ -63,4 +63,16 @@ async function sendInvite(to, token, invitedBy) {
   );
 }
 
-module.exports = { sendPasswordReset, sendTelegramCode, sendInvite };
+async function sendVerification(to, token) {
+  const url = `${process.env.FRONTEND_URL}/verify-email?token=${token}`;
+  await sendMail(
+    to,
+    "Підтвердження email — Home Hub",
+    `<p>Дякуємо за реєстрацію в <strong>Home Hub</strong>!</p>
+     <p>Будь ласка, підтвердіть свою електронну пошту протягом 12 годин:</p>
+     <p><a href="${url}" style="background:#3b82f6;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;display:inline-block">Підтвердити email</a></p>
+     <p style="color:#888;font-size:12px">Якщо ви не реєструвалися — проігноруйте цей лист.</p>`
+  );
+}
+
+module.exports = { sendPasswordReset, sendTelegramCode, sendInvite, sendVerification };

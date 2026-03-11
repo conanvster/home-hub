@@ -34,6 +34,7 @@ export default function ChatPage() {
   const [search, setSearch] = useState("");
   const [sending, setSending] = useState(false);
   const [showSidebar, setShowSidebar] = useState(true); // мобільний стан
+  const [hasAIAccess, setHasAIAccess] = useState(false);
   const bottomRef = useRef(null);
   const intervalRef = useRef(null);
   const textareaRef = useRef(null);
@@ -47,6 +48,11 @@ export default function ChatPage() {
   }, [text]);
 
   const isAISelected = selectedUser?._id === "ai";
+
+  // Перевірити доступ до AI
+  useEffect(() => {
+    api.getMe().then(me => setHasAIAccess(!!me.aiAgentAccess)).catch(console.error);
+  }, []);
 
   // Завантажити список юзерів
   useEffect(() => {
@@ -192,15 +198,17 @@ export default function ChatPage() {
               💬 Загальний чат
             </button>
 
-            {/* AI агент */}
-            <button
-              onClick={() => handleSelectUser(AI_USER)}
-              className={`w-full text-left px-3 py-2 rounded-xl text-sm transition ${
-                isAISelected ? "bg-purple-700 text-white" : "text-gray-300 hover:bg-gray-700/60"
-              }`}
-            >
-              🤖 AI Агент
-            </button>
+            {/* AI агент — тільки якщо є доступ */}
+            {hasAIAccess && (
+              <button
+                onClick={() => handleSelectUser(AI_USER)}
+                className={`w-full text-left px-3 py-2 rounded-xl text-sm transition ${
+                  isAISelected ? "bg-purple-700 text-white" : "text-gray-300 hover:bg-gray-700/60"
+                }`}
+              >
+                🤖 AI Агент
+              </button>
+            )}
 
             <input
               value={search}

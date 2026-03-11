@@ -11,6 +11,7 @@ import LocalAdminPage from "./pages/LocalAdminPage";
 import ChatPage from "./pages/ChatPage";
 import InvitePage from "./pages/InvitePage";
 import ProfilePage from "./pages/ProfilePage";
+import VerifyEmailPage from "./pages/VerifyEmailPage";
 import { useAuthStore } from "./store/useAuthStore";
 import { IS_LOCAL } from "./config";
 
@@ -42,6 +43,7 @@ export default function App() {
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
+      <Route path="/verify-email" element={<VerifyEmailPage />} />
       <Route path="/" element={<PrivateRoute><MapPage /></PrivateRoute>} />
       <Route path="/kanban" element={<PrivateRoute><KanbanPage /></PrivateRoute>} />
       <Route path="/chat" element={<PrivateRoute><ChatPage /></PrivateRoute>} />

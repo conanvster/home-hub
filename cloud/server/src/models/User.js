@@ -16,6 +16,10 @@ const userSchema = new mongoose.Schema(
     telegramLinkCodeExpires: { type: Date, default: null },
     telegramLinkChatId: { type: String, default: null },
     expoPushToken: { type: String, default: null },
+    emailVerified: { type: Boolean, default: false },
+    verificationToken: { type: String, default: null },
+    verificationTokenExpires: { type: Date, default: null },
+    aiAgentAccess: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

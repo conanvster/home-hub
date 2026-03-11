@@ -1,6 +1,7 @@
 const router = require("express").Router();
 const Anthropic = require("@anthropic-ai/sdk");
 const auth = require("../middleware/auth");
+const User = require("../models/User");
 const Task = require("../models/Task");
 const KanbanSettings = require("../models/KanbanSettings");
 
@@ -116,10 +117,10 @@ const TOOLS = [
   },
 ];
 
-async function executeTool(name, input) {
+async function executeTool(name, input, userId) {
   try {
     if (name === "list_tasks") {
-      const filter = {};
+      const filter = { userId };
       if (input.column) filter.column = input.column;
       const tasks = await Task.find(filter).lean();
       if (tasks.length === 0) return "Задач не знайдено.";
@@ -130,8 +131,9 @@ async function executeTool(name, input) {
     }
 
     if (name === "create_task") {
-      const count = await Task.countDocuments();
+      const count = await Task.countDocuments({ userId });
       const taskData = {
+        userId,
         title:       input.title,
         description: input.description || "",
         type:        input.type || "task",
@@ -153,15 +155,15 @@ async function executeTool(name, input) {
       const updates = { ...rest };
       if (parentTaskId !== undefined) updates.parentTask = parentTaskId || null;
       if (linkedTaskIds !== undefined) updates.linkedTasks = linkedTaskIds;
-      const task = await Task.findByIdAndUpdate(id, updates, { new: true });
+      const task = await Task.findOneAndUpdate({ _id: id, userId }, updates, { new: true });
       if (!task) return `Задачу з ID ${id} не знайдено.`;
       return `Задачу оновлено: "${task.title}" — тип: ${task.type}, колонка: ${task.column}.`;
     }
 
     if (name === "link_tasks") {
       const [t1, t2] = await Promise.all([
-        Task.findById(input.taskId),
-        Task.findById(input.linkId),
+        Task.findOne({ _id: input.taskId, userId }),
+        Task.findOne({ _id: input.linkId, userId }),
       ]);
       if (!t1) return `Задачу ${input.taskId} не знайдено.`;
       if (!t2) return `Задачу ${input.linkId} не знайдено.`;
@@ -207,6 +209,12 @@ async function executeTool(name, input) {
 
 // POST /api/agent/chat
 router.post("/chat", auth, async (req, res) => {
+  // Check AI agent access
+  const user = await User.findById(req.user.id).select("aiAgentAccess");
+  if (!user?.aiAgentAccess) {
+    return res.status(403).json({ error: "AI агент не доступний для вашого акаунта" });
+  }
+
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     return res.status(503).json({ error: "ANTHROPIC_API_KEY не налаштовано" });
@@ -249,7 +257,7 @@ router.post("/chat", auth, async (req, res) => {
         toolUseBlocks.map(async (block) => ({
           type: "tool_result",
           tool_use_id: block.id,
-          content: await executeTool(block.name, block.input),
+          content: await executeTool(block.name, block.input, req.user.id),
         }))
       );
 

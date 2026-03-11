@@ -121,6 +121,10 @@ export const api = {
   adminInvite: (email, role) =>
     request("/admin/invite", { method: "POST", body: JSON.stringify({ email, role }) }),
 
+  // Email verification
+  verifyEmail: (token) => request(`/auth/verify-email?token=${token}`),
+  resendVerification: () => request("/auth/resend-verification", { method: "POST" }),
+
   // Chat
   getChatUsers: (q) => request(`/chat/users${q ? `?q=${encodeURIComponent(q)}` : ""}`),
   getChatMessages: (recipientId, limit = 50) =>
