@@ -55,10 +55,11 @@ export default function AppHeader({ activePage, constrained = false }) {
         <a href="/" className="font-bold text-white mr-3 sm:mr-6 text-sm whitespace-nowrap">🏠 Home Hub</a>
         <nav className="flex flex-1 h-full">
           <a href="/"        className={navLink(activePage === "map")}>Трекінг</a>
+          <a href="/kanban"  className={navLink(activePage === "kanban")}>📋 Канбан</a>
+          <a href="/chat"    className={navLink(activePage === "chat")}>💬 Чат</a>
           {isAdmin && (
             <a href="/admin" className={navLink(activePage === "admin")}>Адмін</a>
           )}
-          <a href="/chat"    className={navLink(activePage === "chat")}>💬 Чат</a>
           <a href="/profile" className={navLink(activePage === "profile")}>👤 Профіль</a>
         </nav>
         <span className="text-gray-600 text-xs font-mono mx-2 whitespace-nowrap hidden md:inline">{VERSION}</span>

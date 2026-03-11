@@ -72,6 +72,7 @@ app.use("/api/zones", require("./routes/zones"));
 app.use("/api/sync", require("./routes/sync"));
 app.use("/api/telegram", require("./routes/telegram"));
 app.use("/api/tasks", require("./routes/tasks"));
+app.use("/api/agent", require("./routes/agent"));
 app.use("/api/admin", require("./routes/admin"));
 app.use("/api/chat",     require("./routes/chat"));
 app.use("/api/settings", require("./routes/settings"));

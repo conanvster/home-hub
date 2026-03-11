@@ -74,14 +74,14 @@ export const api = {
     return cloudReq(`/logs?${qs}`);
   },
 
-  // ── Kanban (local) ───────────────────────────────────────────
-  getTasks: () => localReq("/tasks"),
-  createTask: (data) => localReq("/tasks", { method: "POST", body: JSON.stringify(data) }),
-  updateTask: (id, data) => localReq(`/tasks/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
-  deleteTask: (id) => localReq(`/tasks/${id}`, { method: "DELETE" }),
-  getCategories: () => localReq("/tasks/categories"),
+  // ── Kanban (cloud) ───────────────────────────────────────────
+  getTasks: () => cloudReq("/tasks"),
+  createTask: (data) => cloudReq("/tasks", { method: "POST", body: JSON.stringify(data) }),
+  updateTask: (id, data) => cloudReq(`/tasks/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  deleteTask: (id) => cloudReq(`/tasks/${id}`, { method: "DELETE" }),
+  getCategories: () => cloudReq("/tasks/categories"),
   addComment: (taskId, text) =>
-    localReq(`/tasks/${taskId}/comments`, { method: "POST", body: JSON.stringify({ text }) }),
+    cloudReq(`/tasks/${taskId}/comments`, { method: "POST", body: JSON.stringify({ text }) }),
 
   // ── Home Assistant (local) ───────────────────────────────────
   haStates: () => localReq("/ha/states"),
@@ -108,9 +108,9 @@ export const api = {
     localReq("/chat/messages", { method: "POST", body: JSON.stringify({ text, recipientId: recipientId || null }) }),
   getChatUnreadLocal: () => localReq("/chat/unread"),
 
-  // ── AI Agent (local) ─────────────────────────────────────────
+  // ── AI Agent (cloud) ─────────────────────────────────────────
   agentChat: (message, history) =>
-    localReq("/agent/chat", { method: "POST", body: JSON.stringify({ message, history }) }),
+    cloudReq("/agent/chat", { method: "POST", body: JSON.stringify({ message, history }) }),
 
   // Camera URL — повертає URL (не робить fetch, використовується в Image)
   haCameraUrl: async (entityId) => {

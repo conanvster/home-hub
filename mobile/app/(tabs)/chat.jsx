@@ -230,15 +230,13 @@ export default function ChatScreen() {
               <Text style={[s.tabText, !selectedUser && s.tabTextActive]}>💬 Загальний</Text>
             </TouchableOpacity>
 
-            {/* AI агент — тільки локально */}
-            {isLocal && (
-              <TouchableOpacity
-                style={[s.tab, isAIChat && s.tabAI]}
-                onPress={() => selectUser(AI_USER)}
-              >
-                <Text style={[s.tabText, isAIChat && s.tabTextActive]}>🤖 AI</Text>
-              </TouchableOpacity>
-            )}
+            {/* AI агент */}
+            <TouchableOpacity
+              style={[s.tab, isAIChat && s.tabAI]}
+              onPress={() => selectUser(AI_USER)}
+            >
+              <Text style={[s.tabText, isAIChat && s.tabTextActive]}>🤖 AI</Text>
+            </TouchableOpacity>
 
             {users.map((u) => {
               const unreadCount = unread[u._id] || 0;

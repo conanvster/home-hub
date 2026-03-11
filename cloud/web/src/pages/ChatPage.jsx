@@ -2,7 +2,6 @@ import { useEffect, useRef, useState, useCallback, useLayoutEffect } from "react
 import { api } from "../services/api";
 import { useAuthStore } from "../store/useAuthStore";
 import AppHeader from "../components/AppHeader";
-import { IS_LOCAL } from "../config";
 
 // Спеціальний "користувач" для AI агента (тільки локально)
 const AI_USER = { _id: "ai", email: "ai@agent.local" };
@@ -193,17 +192,15 @@ export default function ChatPage() {
               💬 Загальний чат
             </button>
 
-            {/* AI агент — тільки локально */}
-            {IS_LOCAL && (
-              <button
-                onClick={() => handleSelectUser(AI_USER)}
-                className={`w-full text-left px-3 py-2 rounded-xl text-sm transition ${
-                  isAISelected ? "bg-purple-700 text-white" : "text-gray-300 hover:bg-gray-700/60"
-                }`}
-              >
-                🤖 AI Агент
-              </button>
-            )}
+            {/* AI агент */}
+            <button
+              onClick={() => handleSelectUser(AI_USER)}
+              className={`w-full text-left px-3 py-2 rounded-xl text-sm transition ${
+                isAISelected ? "bg-purple-700 text-white" : "text-gray-300 hover:bg-gray-700/60"
+              }`}
+            >
+              🤖 AI Агент
+            </button>
 
             <input
               value={search}

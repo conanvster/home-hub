@@ -5,7 +5,6 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { api } from "../../src/services/api";
-import { useSettingsStore } from "../../src/store/useSettingsStore";
 
 const COLUMNS = [
   { key: "idea",         label: "💡 Ідеї" },
@@ -288,7 +287,6 @@ function TaskModal({ task, categories, onClose, onSave, onDelete }) {
 }
 
 export default function KanbanScreen() {
-  const localOnline = useSettingsStore((s) => s.localOnline);
   const [tasks,          setTasks]          = useState([]);
   const [categories,     setCategories]     = useState([]);
   const [loading,        setLoading]        = useState(true);
@@ -316,10 +314,9 @@ export default function KanbanScreen() {
   }, []);
 
   useEffect(() => {
-    if (localOnline === false) { setLoading(false); return; }
     setLoading(true);
     load();
-  }, [load, localOnline]);
+  }, [load]);
 
   // Групування (та сама логіка як у web)
   const activeIdeas = tasks
@@ -430,16 +427,8 @@ export default function KanbanScreen() {
         </ScrollView>
       )}
 
-      {/* Офлайн банер */}
-      {localOnline === false && (
-        <View style={s.offlineBanner}>
-          <Text style={s.offlineText}>📡 Локальний сервер недоступний</Text>
-          <Text style={s.offlineHint}>Канбан доступний тільки в домашній мережі</Text>
-        </View>
-      )}
-
       {/* Помилка */}
-      {error && localOnline !== false && (
+      {error && (
         <View style={s.errorBanner}>
           <Text style={s.errorText}>❌ {error}</Text>
           <TouchableOpacity onPress={load} style={s.retryBtn}>
@@ -449,7 +438,7 @@ export default function KanbanScreen() {
       )}
 
       {/* Завантаження */}
-      {loading && localOnline !== false && (
+      {loading && (
         <View style={{ alignItems: "center", marginTop: 40 }}>
           <ActivityIndicator color="#3b82f6" />
         </View>
@@ -468,7 +457,7 @@ export default function KanbanScreen() {
       >
         {viewMode === "swimlane" ? (
           <>
-            {activeIdeas.length === 0 && ungroupedTasks.length === 0 && !loading && localOnline !== false && (
+            {activeIdeas.length === 0 && ungroupedTasks.length === 0 && !loading && (
               <Text style={s.empty}>Немає активних ідей та задач</Text>
             )}
 
@@ -510,7 +499,7 @@ export default function KanbanScreen() {
           </>
         ) : (
           <>
-            {!loading && !error && colTasks.length === 0 && localOnline !== false && (
+            {!loading && !error && colTasks.length === 0 && (
               <Text style={s.empty}>Немає задач</Text>
             )}
             {colTasks.map((t) => (
@@ -583,9 +572,6 @@ const s = StyleSheet.create({
 
   // Порожньо / офлайн / помилка
   empty:        { color: "#6b7280", textAlign: "center", marginTop: 40, fontSize: 14 },
-  offlineBanner:{ backgroundColor: "#1c1f2e", margin: 12, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: "#374151", alignItems: "center", gap: 4 },
-  offlineText:  { color: "#f59e0b", fontSize: 14, fontWeight: "600" },
-  offlineHint:  { color: "#6b7280", fontSize: 12 },
   errorBanner:  { backgroundColor: "#2d1515", margin: 12, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: "#7f1d1d", alignItems: "center", gap: 8 },
   errorText:    { color: "#f87171", fontSize: 13 },
   retryBtn:     { paddingHorizontal: 16, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: "#3b82f6" },
