@@ -205,7 +205,7 @@ export default function ChatScreen() {
   }
 
   return (
-    <SafeAreaView style={s.container} edges={[]}>
+    <SafeAreaView style={s.container} edges={["bottom"]}>
 
       {/* Індикатор режиму */}
       <View style={[s.modeBanner, isLocal ? s.modeBannerLocal : s.modeBannerCloud]}>
@@ -216,8 +216,8 @@ export default function ChatScreen() {
 
       {/* Таби розмов */}
       <View style={s.header}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flex: 1 }}>
-          <View style={{ flexDirection: "row", gap: 6, alignItems: "center", paddingRight: 8 }}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexDirection: "row", gap: 6, alignItems: "center", paddingRight: 8 }}>
+          <View style={{ flexDirection: "row", gap: 6, alignItems: "center" }}>
             <TouchableOpacity
               style={[s.tab, !selectedUser && s.tabActive]}
               onPress={() => selectUser(null)}
@@ -261,6 +261,7 @@ export default function ChatScreen() {
           </View>
         </ScrollView>
       </View>
+
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <FlatList
@@ -334,7 +335,7 @@ const s = StyleSheet.create({
   modeBannerText: { color: "#6ee7b7", fontSize: 10, fontWeight: "600" },
 
   // Таби
-  header: { borderBottomWidth: 1, borderBottomColor: "#374151", paddingVertical: 6, paddingLeft: 12 },
+  header: { borderBottomWidth: 1, borderBottomColor: "#374151", paddingVertical: 8, paddingLeft: 12, minHeight: 48 },
   tab: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 16, backgroundColor: "#1f2937", flexDirection: "row", alignItems: "center", gap: 4 },
   tabActive: { backgroundColor: "#1d4ed8" },
   tabAI: { backgroundColor: "#6b21a8" },
