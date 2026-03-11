@@ -73,13 +73,13 @@ export default function ChatScreen() {
   const myId = user?._id;
   const localOnline = useSettingsStore((s) => s.localOnline);
   const isLocal = localOnline === true;
-  const isAISelected = isLocal; // AI тільки в локальному режимі — буде окремий стан нижче
 
   const [selectedUser, setSelectedUser] = useState(null); // null = загальний, AI_USER = AI агент
   const [messages, setMessages] = useState([]);
   const [users, setUsers] = useState([]);
   const [unread, setUnread] = useState({});
   const [text, setText] = useState("");
+  const [inputHeight, setInputHeight] = useState(42);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
@@ -205,6 +205,11 @@ export default function ChatScreen() {
   }
 
   return (
+    <KeyboardAvoidingView
+      style={{ flex: 1, backgroundColor: "#111827" }}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
+    >
     <SafeAreaView style={s.container} edges={["bottom"]}>
 
       {/* Індикатор режиму */}
@@ -263,7 +268,7 @@ export default function ChatScreen() {
       </View>
 
 
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+      <View style={{ flex: 1 }}>
         <FlatList
           ref={listRef}
           data={messages}
@@ -294,9 +299,10 @@ export default function ChatScreen() {
 
         <View style={s.inputRow}>
           <TextInput
-            style={[s.input, isAIChat && s.inputAI]}
+            style={[s.input, isAIChat && s.inputAI, { height: Math.min(Math.max(42, inputHeight), 120) }]}
             value={text}
             onChangeText={setText}
+            onContentSizeChange={(e) => setInputHeight(e.nativeEvent.contentSize.height)}
             placeholder={isAIChat ? "Запитай AI агента..." : "Повідомлення..."}
             placeholderTextColor="#6b7280"
             multiline
@@ -310,7 +316,7 @@ export default function ChatScreen() {
             {sending ? <ActivityIndicator size="small" color="#fff" /> : <Text style={s.sendIcon}>▶</Text>}
           </TouchableOpacity>
         </View>
-      </KeyboardAvoidingView>
+      </View>
 
       <UserPicker
         visible={showPicker}
@@ -322,6 +328,7 @@ export default function ChatScreen() {
         }}
       />
     </SafeAreaView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -357,7 +364,7 @@ const s = StyleSheet.create({
 
   // Введення
   inputRow: { flexDirection: "row", padding: 10, gap: 8, borderTopWidth: 1, borderTopColor: "#374151", alignItems: "flex-end" },
-  input: { flex: 1, backgroundColor: "#1f2937", color: "#fff", borderRadius: 20, paddingHorizontal: 14, paddingVertical: 10, fontSize: 14, borderWidth: 1, borderColor: "#374151", maxHeight: 100 },
+  input: { flex: 1, backgroundColor: "#1f2937", color: "#fff", borderRadius: 20, paddingHorizontal: 14, paddingVertical: 10, fontSize: 14, borderWidth: 1, borderColor: "#374151" },
   inputAI: { borderColor: "#7e22ce" },
   sendBtn: { backgroundColor: "#3b82f6", width: 40, height: 40, borderRadius: 20, justifyContent: "center", alignItems: "center" },
   sendBtnAI: { backgroundColor: "#7e22ce" },
