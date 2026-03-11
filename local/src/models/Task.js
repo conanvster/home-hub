@@ -15,6 +15,12 @@ const taskSchema = new mongoose.Schema(
       enum: ["idea", "in-progress", "done", "archive"],
       default: "idea",
     },
+    type: {
+      type: String,
+      enum: ["idea", "task", "subtask"],
+      default: "task",
+    },
+    parentTask: { type: mongoose.Schema.Types.ObjectId, ref: "Task", default: null },
     order: { type: Number, default: 0 },
     linkedTasks: [{ type: mongoose.Schema.Types.ObjectId, ref: "Task" }],
     comments: [

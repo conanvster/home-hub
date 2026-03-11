@@ -17,6 +17,16 @@ const PRIORITIES = [
   { id: "low",      label: "🟢 Низький",  cls: "bg-green-900/60 text-green-300 border border-green-700" },
 ];
 
+const TASK_TYPES = [
+  { id: "idea",    label: "💡 Ідея",      cls: "bg-amber-900/60 text-amber-300 border border-amber-600" },
+  { id: "task",    label: "✦ Задача",     cls: "bg-blue-900/60 text-blue-300 border border-blue-700" },
+  { id: "subtask", label: "↳ Підзадача",  cls: "bg-gray-700 text-gray-300 border border-gray-600" },
+];
+
+function typeInfo(id) {
+  return TASK_TYPES.find((t) => t.id === id) || TASK_TYPES[1];
+}
+
 // Палітра кольорів для категорій (циклічно по індексу)
 const CAT_PALETTE = [
   "bg-blue-900/50 text-blue-300",
@@ -122,6 +132,7 @@ function TaskModal({ task, categories, allTasks, onSave, onDelete, onClose, onOp
   const [form, setForm] = useState({
     title: task.title || "",
     description: task.description || "",
+    type: task.type || "task",
     category: task.category || categories[0] || "інше",
     priority: task.priority || "medium",
     column: task.column || "idea",
@@ -192,7 +203,12 @@ function TaskModal({ task, categories, allTasks, onSave, onDelete, onClose, onOp
       >
         {/* Заголовок */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-700 flex-shrink-0">
-          <h2 className="text-white font-semibold">{isNew ? "Нова задача" : "Редагувати задачу"}</h2>
+          <h2 className="text-white font-semibold">
+            {isNew
+              ? (form.type === "idea" ? "💡 Нова ідея" : form.type === "subtask" ? "↳ Нова підзадача" : "✦ Нова задача")
+              : typeInfo(task.type).label + " — редагувати"
+            }
+          </h2>
           <button onClick={onClose} className="text-gray-400 hover:text-white text-lg leading-none">✕</button>
         </div>
 
@@ -211,9 +227,28 @@ function TaskModal({ task, categories, allTasks, onSave, onDelete, onClose, onOp
             />
           </div>
 
+          {/* Тип */}
+          <div>
+            <label className="text-gray-400 text-xs mb-1 block">Тип</label>
+            <div className="flex gap-2">
+              {TASK_TYPES.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => set("type", t.id)}
+                  className={`flex-1 px-2 py-1.5 rounded-lg text-xs border transition ${
+                    form.type === t.id ? t.cls + " opacity-100" : "bg-gray-700 text-gray-400 border-gray-600 hover:border-gray-500"
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Опис */}
           <div>
-            <label className="text-gray-400 text-xs mb-1 block">Опис</label>
+            <label className="text-gray-400 text-xs mb-1 block">Опис{form.type === "idea" ? " (контекст ідеї)" : ""}</label>
             <textarea
               value={form.description}
               onChange={(e) => set("description", e.target.value)}
@@ -395,7 +430,10 @@ function TaskModal({ task, categories, allTasks, onSave, onDelete, onClose, onOp
 // ── Картка задачі ──────────────────────────────────────────────
 function TaskCard({ task, categories, onEdit, onDragStart, onDragEnd }) {
   const prio = prioInfo(task.priority);
-  const cls = catCls(categories, task.category);
+  const cat  = catCls(categories, task.category);
+  const type = typeInfo(task.type);
+  const isIdea = task.type === "idea";
+  const isSubtask = task.type === "subtask";
 
   return (
     <div
@@ -403,21 +441,36 @@ function TaskCard({ task, categories, onEdit, onDragStart, onDragEnd }) {
       onDragStart={(e) => onDragStart(e, task)}
       onDragEnd={onDragEnd}
       onClick={() => onEdit(task)}
-      className="bg-gray-800 border border-gray-700 rounded-lg p-3 cursor-pointer hover:border-gray-500 transition select-none"
+      className={`rounded-lg p-3 cursor-pointer transition select-none border ${
+        isIdea
+          ? "bg-amber-950/40 border-amber-700/60 hover:border-amber-500"
+          : isSubtask
+          ? "bg-gray-800/60 border-gray-700/50 hover:border-gray-500 ml-2 border-l-2 border-l-gray-500"
+          : "bg-gray-800 border-gray-700 hover:border-gray-500"
+      }`}
     >
       <div className="flex gap-1.5 flex-wrap mb-2">
+        {/* Тип (показуємо тільки для idea і subtask, task — за замовчуванням) */}
+        {task.type && task.type !== "task" && (
+          <span className={`text-xs px-1.5 py-0.5 rounded ${type.cls}`}>{type.label}</span>
+        )}
         <span className={`text-xs px-1.5 py-0.5 rounded ${prio.cls}`}>{prio.label}</span>
         {task.category && (
-          <span className={`text-xs px-1.5 py-0.5 rounded ${cls}`}>{task.category}</span>
+          <span className={`text-xs px-1.5 py-0.5 rounded ${cat}`}>{task.category}</span>
         )}
       </div>
       <p className="text-white text-sm font-medium leading-snug">{task.title}</p>
       {task.description && (
         <p className="text-gray-400 text-xs mt-1 line-clamp-2">{task.description}</p>
       )}
-      <p className="text-gray-600 text-xs mt-2">
-        {new Date(task.createdAt).toLocaleDateString("uk-UA")}
-      </p>
+      <div className="flex items-center justify-between mt-2">
+        <p className="text-gray-600 text-xs">
+          {new Date(task.createdAt).toLocaleDateString("uk-UA")}
+        </p>
+        {task.linkedTasks?.length > 0 && (
+          <span className="text-gray-500 text-xs">🔗 {task.linkedTasks.length}</span>
+        )}
+      </div>
     </div>
   );
 }
