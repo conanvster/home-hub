@@ -121,23 +121,83 @@ function IdeaRow({ idea, linkedTasks, collapsed, onToggle, onPress }) {
   );
 }
 
-function TaskModal({ task, categories, onClose, onSave, onDelete }) {
+function TaskPickerModal({ visible, onClose, onSelect, allTasks, currentTaskId, linkedIds }) {
+  const [search, setSearch] = useState("");
+  const available = allTasks.filter((t) =>
+    t._id !== currentTaskId &&
+    !linkedIds.includes(String(t._id)) &&
+    t.title.toLowerCase().includes(search.toLowerCase())
+  );
+  return (
+    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: "#111827" }}>
+        <View style={s.modalHeader}>
+          <TouchableOpacity onPress={onClose}><Text style={s.modalClose}>✕</Text></TouchableOpacity>
+          <Text style={s.modalTitle}>Зв'язати задачу</Text>
+          <View style={{ width: 32 }} />
+        </View>
+        <View style={{ padding: 12 }}>
+          <TextInput
+            style={s.input}
+            value={search}
+            onChangeText={setSearch}
+            placeholder="Пошук задачі..."
+            placeholderTextColor="#6b7280"
+          />
+        </View>
+        <ScrollView contentContainerStyle={{ padding: 12, gap: 6 }}>
+          {available.map((t) => (
+            <TouchableOpacity
+              key={t._id}
+              style={[s.taskCard, { gap: 2 }]}
+              onPress={() => { onSelect(t); onClose(); }}
+            >
+              <Text style={{ color: "#9ca3af", fontSize: 11 }}>
+                {COLUMNS.find((c) => c.key === t.column)?.label ?? t.column}
+              </Text>
+              <Text style={s.taskTitle}>{t.title}</Text>
+            </TouchableOpacity>
+          ))}
+          {available.length === 0 && (
+            <Text style={{ color: "#6b7280", textAlign: "center", marginTop: 20 }}>Не знайдено</Text>
+          )}
+        </ScrollView>
+      </SafeAreaView>
+    </Modal>
+  );
+}
+
+function TaskModal({ task, categories, allTasks, onClose, onSave, onDelete }) {
   const defaultType = task?._defaultType ?? task?.type ?? "task";
-  const [title,      setTitle]      = useState(task?.title       ?? "");
-  const [desc,       setDesc]       = useState(task?.description ?? "");
-  const [column,     setColumn]     = useState(task?.column      ?? "idea");
-  const [priority,   setPriority]   = useState(task?.priority    ?? "medium");
-  const [type,       setType]       = useState(defaultType);
-  const [category,   setCategory]   = useState(task?.category    ?? "");
-  const [newComment, setNewComment] = useState("");
-  const [comments,   setComments]   = useState(task?.comments    ?? []);
-  const [saving,     setSaving]     = useState(false);
+  const [title,        setTitle]        = useState(task?.title       ?? "");
+  const [desc,         setDesc]         = useState(task?.description ?? "");
+  const [column,       setColumn]       = useState(task?.column      ?? "idea");
+  const [priority,     setPriority]     = useState(task?.priority    ?? "medium");
+  const [type,         setType]         = useState(defaultType);
+  const [category,     setCategory]     = useState(task?.category    ?? "");
+  const [newComment,   setNewComment]   = useState("");
+  const [comments,     setComments]     = useState(task?.comments    ?? []);
+  const [linkedTasks,  setLinkedTasks]  = useState(
+    (task?.linkedTasks ?? []).map(String)
+  );
+  const [showPicker,   setShowPicker]   = useState(false);
+  const [saving,       setSaving]       = useState(false);
+
+  // Об'єкти пов'язаних задач для відображення
+  const linkedObjects = allTasks.filter((t) => linkedTasks.includes(String(t._id)));
+
+  function addLink(t) {
+    setLinkedTasks((prev) => [...prev, String(t._id)]);
+  }
+  function removeLink(id) {
+    setLinkedTasks((prev) => prev.filter((x) => x !== String(id)));
+  }
 
   async function save() {
     if (!title.trim()) return;
     setSaving(true);
     try {
-      await onSave({ title: title.trim(), description: desc, column, priority, type, category });
+      await onSave({ title: title.trim(), description: desc, column, priority, type, category, linkedTasks });
       onClose();
     } finally {
       setSaving(false);
@@ -247,6 +307,33 @@ function TaskModal({ task, categories, onClose, onSave, onDelete }) {
             </View>
           )}
 
+          {/* Пов'язані задачі */}
+          <View>
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+              <Text style={s.fieldLabel}>🔗 Пов'язані задачі</Text>
+              <TouchableOpacity onPress={() => setShowPicker(true)} style={s.addCommentBtn}>
+                <Text style={{ color: "#fff", fontSize: 12 }}>+ Зв'язати</Text>
+              </TouchableOpacity>
+            </View>
+            {linkedObjects.length === 0 ? (
+              <Text style={{ color: "#6b7280", fontSize: 12 }}>Немає пов'язаних задач</Text>
+            ) : (
+              linkedObjects.map((t) => (
+                <View key={t._id} style={[s.comment, { flexDirection: "row", alignItems: "center" }]}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: "#9ca3af", fontSize: 10 }}>
+                      {COLUMNS.find((c) => c.key === t.column)?.label ?? t.column}
+                    </Text>
+                    <Text style={{ color: "#e5e7eb", fontSize: 13 }} numberOfLines={1}>{t.title}</Text>
+                  </View>
+                  <TouchableOpacity onPress={() => removeLink(t._id)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                    <Text style={{ color: "#6b7280", fontSize: 18, lineHeight: 24 }}>×</Text>
+                  </TouchableOpacity>
+                </View>
+              ))
+            )}
+          </View>
+
           {/* Коментарі */}
           {task?._id && (
             <View>
@@ -281,6 +368,15 @@ function TaskModal({ task, categories, onClose, onSave, onDelete }) {
             </TouchableOpacity>
           )}
         </ScrollView>
+
+        <TaskPickerModal
+          visible={showPicker}
+          onClose={() => setShowPicker(false)}
+          onSelect={addLink}
+          allTasks={allTasks}
+          currentTaskId={task?._id}
+          linkedIds={linkedTasks}
+        />
       </SafeAreaView>
     </Modal>
   );
@@ -513,6 +609,7 @@ export default function KanbanScreen() {
         <TaskModal
           task={modalTask}
           categories={categories}
+          allTasks={tasks}
           onClose={() => setShowModal(false)}
           onSave={saveTask}
           onDelete={deleteTask}

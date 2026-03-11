@@ -1,7 +1,8 @@
 import { useEffect, useState, useCallback } from "react";
 import {
   View, Text, StyleSheet, FlatList, RefreshControl,
-  TouchableOpacity, Modal, ActivityIndicator,
+  TouchableOpacity, Modal, ActivityIndicator, ScrollView,
+  TextInput, Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
@@ -164,6 +165,200 @@ function TrackerMapModal({ tracker, latestLog, onClose }) {
   );
 }
 
+// ── Зони ──────────────────────────────────────────────────────
+const ZONE_COLORS = ["#3b82f6", "#22c55e", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899"];
+
+function ZoneFormModal({ onClose, onSave }) {
+  const [name,   setName]   = useState("");
+  const [lat,    setLat]    = useState("");
+  const [lon,    setLon]    = useState("");
+  const [radius, setRadius] = useState("200");
+  const [color,  setColor]  = useState(ZONE_COLORS[0]);
+  const [saving, setSaving] = useState(false);
+
+  async function save() {
+    if (!name.trim() || !lat.trim() || !lon.trim()) {
+      Alert.alert("Помилка", "Заповніть назву та координати"); return;
+    }
+    const latN = parseFloat(lat), lonN = parseFloat(lon), radN = parseInt(radius) || 200;
+    if (isNaN(latN) || isNaN(lonN)) {
+      Alert.alert("Помилка", "Некоректні координати"); return;
+    }
+    setSaving(true);
+    try {
+      await onSave({ name: name.trim(), lat: latN, lng: lonN, radius: radN, color });
+      onClose();
+    } catch (err) {
+      Alert.alert("Помилка", err.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Modal visible animationType="slide" onRequestClose={onClose}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: "#111827" }}>
+        <View style={ms.header}>
+          <TouchableOpacity onPress={onClose}><Text style={ms.close}>✕</Text></TouchableOpacity>
+          <Text style={ms.title}>Нова зона</Text>
+          <TouchableOpacity onPress={save} disabled={saving}>
+            {saving ? <ActivityIndicator color="#3b82f6" /> : <Text style={{ color: "#3b82f6", fontWeight: "600" }}>Зберегти</Text>}
+          </TouchableOpacity>
+        </View>
+        <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }}>
+          <TextInput
+            style={zs.input}
+            value={name}
+            onChangeText={setName}
+            placeholder="Назва зони"
+            placeholderTextColor="#6b7280"
+          />
+          <View style={{ flexDirection: "row", gap: 8 }}>
+            <TextInput
+              style={[zs.input, { flex: 1 }]}
+              value={lat}
+              onChangeText={setLat}
+              placeholder="Широта (напр. 49.3900)"
+              placeholderTextColor="#6b7280"
+              keyboardType="numeric"
+            />
+            <TextInput
+              style={[zs.input, { flex: 1 }]}
+              value={lon}
+              onChangeText={setLon}
+              placeholder="Довгота (напр. 36.2100)"
+              placeholderTextColor="#6b7280"
+              keyboardType="numeric"
+            />
+          </View>
+          <TextInput
+            style={zs.input}
+            value={radius}
+            onChangeText={setRadius}
+            placeholder="Радіус (метри)"
+            placeholderTextColor="#6b7280"
+            keyboardType="numeric"
+          />
+          <View>
+            <Text style={{ color: "#9ca3af", fontSize: 12, marginBottom: 8 }}>Колір</Text>
+            <View style={{ flexDirection: "row", gap: 10 }}>
+              {ZONE_COLORS.map((c) => (
+                <TouchableOpacity
+                  key={c}
+                  onPress={() => setColor(c)}
+                  style={[zs.colorDot, { backgroundColor: c }, color === c && zs.colorDotActive]}
+                />
+              ))}
+            </View>
+          </View>
+          <Text style={{ color: "#6b7280", fontSize: 12 }}>
+            💡 Координати можна знайти на maps.google.com (клік → "Що тут?")
+          </Text>
+        </ScrollView>
+      </SafeAreaView>
+    </Modal>
+  );
+}
+
+function ZonesTab() {
+  const [zones,      setZones]      = useState([]);
+  const [loading,    setLoading]    = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [showForm,   setShowForm]   = useState(false);
+
+  const load = useCallback(async () => {
+    try {
+      const data = await api.getZones();
+      setZones(Array.isArray(data) ? data : []);
+    } catch {}
+    setLoading(false);
+    setRefreshing(false);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  async function handleDelete(zone) {
+    Alert.alert(
+      "Видалити зону",
+      `Видалити "${zone.name}"?`,
+      [
+        { text: "Скасувати", style: "cancel" },
+        {
+          text: "Видалити", style: "destructive",
+          onPress: async () => {
+            try { await api.deleteZone(zone._id); await load(); }
+            catch (err) { Alert.alert("Помилка", err.message); }
+          },
+        },
+      ]
+    );
+  }
+
+  async function handleSave(data) {
+    await api.createZone(data);
+    await load();
+  }
+
+  return (
+    <View style={{ flex: 1 }}>
+      <View style={zs.header}>
+        <Text style={zs.headerTitle}>🗺️ Геозони</Text>
+        <TouchableOpacity style={zs.addBtn} onPress={() => setShowForm(true)}>
+          <Text style={{ color: "#fff", fontWeight: "600", fontSize: 13 }}>+ Зона</Text>
+        </TouchableOpacity>
+      </View>
+
+      {loading ? (
+        <View style={{ alignItems: "center", marginTop: 40 }}>
+          <ActivityIndicator color="#3b82f6" />
+        </View>
+      ) : (
+        <FlatList
+          data={zones}
+          keyExtractor={(z) => z._id}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => { setRefreshing(true); load(); }}
+              tintColor="#3b82f6"
+            />
+          }
+          contentContainerStyle={{ padding: 16, gap: 10 }}
+          ListEmptyComponent={
+            <Text style={{ color: "#6b7280", textAlign: "center", marginTop: 40 }}>
+              Немає геозон. Додайте першу!
+            </Text>
+          }
+          renderItem={({ item: z }) => (
+            <View style={zs.zoneCard}>
+              <View style={[zs.colorBar, { backgroundColor: z.color || "#3b82f6" }]} />
+              <View style={{ flex: 1, gap: 2 }}>
+                <Text style={zs.zoneName}>{z.name}</Text>
+                <Text style={zs.zoneMeta}>
+                  📍 {z.lat?.toFixed(4)}, {z.lng?.toFixed(4)}  ·  ⭕ {z.radius} м
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => handleDelete(z)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Text style={{ color: "#6b7280", fontSize: 20, lineHeight: 28 }}>🗑</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        />
+      )}
+
+      {showForm && (
+        <ZoneFormModal
+          onClose={() => setShowForm(false)}
+          onSave={handleSave}
+        />
+      )}
+    </View>
+  );
+}
+
 // ── Картка трекера ────────────────────────────────────────────
 function TrackerCard({ item, onPress }) {
   const { tracker, log } = item;
@@ -203,11 +398,12 @@ function TrackerCard({ item, onPress }) {
 
 // ── Головний екран ────────────────────────────────────────────
 export default function TrackingScreen() {
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [tab,        setTab]        = useState("trackers"); // "trackers" | "zones"
+  const [items,      setItems]      = useState([]);
+  const [loading,    setLoading]    = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState(null);
-  const [selected, setSelected] = useState(null);
+  const [error,      setError]      = useState(null);
+  const [selected,   setSelected]   = useState(null);
 
   const load = useCallback(async () => {
     try {
@@ -230,24 +426,45 @@ export default function TrackingScreen() {
 
   return (
     <SafeAreaView style={s.container} edges={["bottom"]}>
-      {error && <Text style={s.error}>❌ {error}</Text>}
+      {/* Вкладки */}
+      <View style={s.tabBar}>
+        <TouchableOpacity
+          style={[s.tabBtn, tab === "trackers" && s.tabBtnActive]}
+          onPress={() => setTab("trackers")}
+        >
+          <Text style={[s.tabText, tab === "trackers" && s.tabTextActive]}>📡 Трекери</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[s.tabBtn, tab === "zones" && s.tabBtnActive]}
+          onPress={() => setTab("zones")}
+        >
+          <Text style={[s.tabText, tab === "zones" && s.tabTextActive]}>🗺️ Зони</Text>
+        </TouchableOpacity>
+      </View>
 
-      <FlatList
-        data={items}
-        keyExtractor={(item) => item.tracker._id}
-        renderItem={({ item }) => <TrackerCard item={item} onPress={setSelected} />}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={() => { setRefreshing(true); load(); }}
-            tintColor="#3b82f6"
+      {tab === "zones" ? (
+        <ZonesTab />
+      ) : (
+        <>
+          {error && <Text style={s.error}>❌ {error}</Text>}
+          <FlatList
+            data={items}
+            keyExtractor={(item) => item.tracker._id}
+            renderItem={({ item }) => <TrackerCard item={item} onPress={setSelected} />}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={() => { setRefreshing(true); load(); }}
+                tintColor="#3b82f6"
+              />
+            }
+            contentContainerStyle={{ padding: 16, gap: 12 }}
+            ListEmptyComponent={
+              !loading && <Text style={s.empty}>Немає трекерів</Text>
+            }
           />
-        }
-        contentContainerStyle={{ padding: 16, gap: 12 }}
-        ListEmptyComponent={
-          !loading && <Text style={s.empty}>Немає трекерів</Text>
-        }
-      />
+        </>
+      )}
 
       {selected && (
         <TrackerMapModal
@@ -261,21 +478,26 @@ export default function TrackingScreen() {
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#111827" },
-  card: { backgroundColor: "#1f2937", borderRadius: 12, padding: 16, borderWidth: 1, borderColor: "#374151" },
-  cardHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 },
-  dot: { width: 8, height: 8, borderRadius: 4 },
-  trackerName: { flex: 1, color: "#fff", fontWeight: "600", fontSize: 15 },
-  chevron: { color: "#6b7280", fontSize: 20 },
-  cardBody: { gap: 4 },
-  age: { color: "#9ca3af", fontSize: 12 },
-  coord: { color: "#9ca3af", fontSize: 13, fontFamily: "monospace" },
-  row: { flexDirection: "row", gap: 12 },
-  time: { color: "#6b7280", fontSize: 12 },
-  speed: { color: "#3b82f6", fontSize: 13, fontWeight: "600" },
-  noData: { color: "#6b7280", fontSize: 13 },
-  error: { color: "#f87171", padding: 16, fontSize: 13 },
-  empty: { color: "#6b7280", textAlign: "center", marginTop: 40, fontSize: 14 },
+  container:    { flex: 1, backgroundColor: "#111827" },
+  tabBar:       { flexDirection: "row", borderBottomWidth: 1, borderBottomColor: "#374151", backgroundColor: "#1f2937" },
+  tabBtn:       { flex: 1, paddingVertical: 12, alignItems: "center" },
+  tabBtnActive: { borderBottomWidth: 2, borderBottomColor: "#3b82f6" },
+  tabText:      { color: "#6b7280", fontSize: 14, fontWeight: "500" },
+  tabTextActive:{ color: "#3b82f6", fontWeight: "700" },
+  card:         { backgroundColor: "#1f2937", borderRadius: 12, padding: 16, borderWidth: 1, borderColor: "#374151" },
+  cardHeader:   { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 },
+  dot:          { width: 8, height: 8, borderRadius: 4 },
+  trackerName:  { flex: 1, color: "#fff", fontWeight: "600", fontSize: 15 },
+  chevron:      { color: "#6b7280", fontSize: 20 },
+  cardBody:     { gap: 4 },
+  age:          { color: "#9ca3af", fontSize: 12 },
+  coord:        { color: "#9ca3af", fontSize: 13, fontFamily: "monospace" },
+  row:          { flexDirection: "row", gap: 12 },
+  time:         { color: "#6b7280", fontSize: 12 },
+  speed:        { color: "#3b82f6", fontSize: 13, fontWeight: "600" },
+  noData:       { color: "#6b7280", fontSize: 13 },
+  error:        { color: "#f87171", padding: 16, fontSize: 13 },
+  empty:        { color: "#6b7280", textAlign: "center", marginTop: 40, fontSize: 14 },
 });
 
 const ms = StyleSheet.create({
@@ -291,10 +513,23 @@ const ms = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: "#374151",
     backgroundColor: "#1f2937",
   },
-  periodBtn: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 16, backgroundColor: "#374151" },
+  periodBtn:       { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 16, backgroundColor: "#374151" },
   periodBtnActive: { backgroundColor: "#1d4ed8" },
-  periodText: { color: "#9ca3af", fontSize: 13 },
-  periodTextActive: { color: "#fff", fontWeight: "600" },
-  infoBar: { backgroundColor: "#1f2937", padding: 12, gap: 4, borderTopWidth: 1, borderTopColor: "#374151" },
-  infoText: { color: "#9ca3af", fontSize: 12 },
+  periodText:      { color: "#9ca3af", fontSize: 13 },
+  periodTextActive:{ color: "#fff", fontWeight: "600" },
+  infoBar:         { backgroundColor: "#1f2937", padding: 12, gap: 4, borderTopWidth: 1, borderTopColor: "#374151" },
+  infoText:        { color: "#9ca3af", fontSize: 12 },
+});
+
+const zs = StyleSheet.create({
+  header:      { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 16, borderBottomWidth: 1, borderBottomColor: "#374151" },
+  headerTitle: { color: "#fff", fontWeight: "700", fontSize: 16 },
+  addBtn:      { backgroundColor: "#1d4ed8", borderRadius: 20, paddingHorizontal: 14, paddingVertical: 7 },
+  zoneCard:    { backgroundColor: "#1f2937", borderRadius: 12, padding: 14, borderWidth: 1, borderColor: "#374151", flexDirection: "row", alignItems: "center", gap: 12 },
+  colorBar:    { width: 4, height: 40, borderRadius: 2 },
+  zoneName:    { color: "#fff", fontSize: 14, fontWeight: "600" },
+  zoneMeta:    { color: "#6b7280", fontSize: 12 },
+  input:       { backgroundColor: "#1f2937", color: "#fff", borderRadius: 12, padding: 12, fontSize: 14, borderWidth: 1, borderColor: "#374151" },
+  colorDot:    { width: 28, height: 28, borderRadius: 14 },
+  colorDotActive: { borderWidth: 3, borderColor: "#fff" },
 });

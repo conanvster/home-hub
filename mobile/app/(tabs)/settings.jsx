@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Switch, TextInput, Alert,
+  Switch, TextInput, Alert, ActivityIndicator,
 } from "react-native";
 import * as TaskManager from "expo-task-manager";
 import { LOCATION_TASK } from "../../src/tasks/locationTask";
@@ -9,6 +9,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { useAuthStore } from "../../src/store/useAuthStore";
 import { useSettingsStore } from "../../src/store/useSettingsStore";
+import { api } from "../../src/services/api";
 import DebugPanel from "../../src/components/DebugPanel";
 
 const FEATURES = [
@@ -25,6 +26,35 @@ export default function SettingsScreen() {
   const logout = useAuthStore((s) => s.logout);
   const { localUrl, features, localOnline, phoneTracking, setLocalUrl, toggleFeature, setPhoneTracking, checkLocalServer } = useSettingsStore();
   const [urlInput, setUrlInput] = useState(localUrl);
+
+  const [curPass,  setCurPass]  = useState("");
+  const [newPass,  setNewPass]  = useState("");
+  const [confPass, setConfPass] = useState("");
+  const [passMsg,  setPassMsg]  = useState(null); // { ok, text }
+  const [passSaving, setPassSaving] = useState(false);
+
+  async function handleChangePassword() {
+    if (!curPass || !newPass || !confPass) {
+      setPassMsg({ ok: false, text: "Заповніть всі поля" }); return;
+    }
+    if (newPass !== confPass) {
+      setPassMsg({ ok: false, text: "Паролі не збігаються" }); return;
+    }
+    if (newPass.length < 6) {
+      setPassMsg({ ok: false, text: "Мінімум 6 символів" }); return;
+    }
+    setPassSaving(true);
+    setPassMsg(null);
+    try {
+      await api.changePassword(curPass, newPass);
+      setPassMsg({ ok: true, text: "Пароль змінено ✓" });
+      setCurPass(""); setNewPass(""); setConfPass("");
+    } catch (err) {
+      setPassMsg({ ok: false, text: err.message });
+    } finally {
+      setPassSaving(false);
+    }
+  }
 
   async function handlePhoneTracking(val) {
     try {
@@ -71,6 +101,49 @@ export default function SettingsScreen() {
           </View>
           <TouchableOpacity style={s.logoutBtn} onPress={handleLogout}>
             <Text style={s.logoutText}>Вийти з акаунту</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Зміна пароля */}
+        <View style={s.section}>
+          <Text style={s.sectionTitle}>🔑 Змінити пароль</Text>
+          <TextInput
+            style={s.input}
+            value={curPass}
+            onChangeText={setCurPass}
+            placeholder="Поточний пароль"
+            placeholderTextColor="#6b7280"
+            secureTextEntry
+          />
+          <TextInput
+            style={s.input}
+            value={newPass}
+            onChangeText={setNewPass}
+            placeholder="Новий пароль (мін. 6 символів)"
+            placeholderTextColor="#6b7280"
+            secureTextEntry
+          />
+          <TextInput
+            style={s.input}
+            value={confPass}
+            onChangeText={setConfPass}
+            placeholder="Повторіть новий пароль"
+            placeholderTextColor="#6b7280"
+            secureTextEntry
+          />
+          {passMsg && (
+            <Text style={{ color: passMsg.ok ? "#22c55e" : "#f87171", fontSize: 13 }}>
+              {passMsg.text}
+            </Text>
+          )}
+          <TouchableOpacity
+            style={[s.saveBtn, { borderRadius: 12, padding: 14, alignItems: "center" }]}
+            onPress={handleChangePassword}
+            disabled={passSaving}
+          >
+            {passSaving
+              ? <ActivityIndicator color="#fff" />
+              : <Text style={{ color: "#fff", fontWeight: "600" }}>Змінити пароль</Text>}
           </TouchableOpacity>
         </View>
 

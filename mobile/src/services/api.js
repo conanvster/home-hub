@@ -108,6 +108,15 @@ export const api = {
     localReq("/chat/messages", { method: "POST", body: JSON.stringify({ text, recipientId: recipientId || null }) }),
   getChatUnreadLocal: () => localReq("/chat/unread"),
 
+  // ── Profile (cloud) ──────────────────────────────────────────
+  changePassword: (currentPassword, newPassword) =>
+    cloudReq("/auth/change-password", { method: "POST", body: JSON.stringify({ currentPassword, newPassword }) }),
+
+  // ── Zones (cloud) ────────────────────────────────────────────
+  getZones: () => cloudReq("/zones"),
+  createZone: (data) => cloudReq("/zones", { method: "POST", body: JSON.stringify(data) }),
+  deleteZone: (id) => cloudReq(`/zones/${id}`, { method: "DELETE" }),
+
   // ── AI Agent (cloud) ─────────────────────────────────────────
   agentChat: (message, history) =>
     cloudReq("/agent/chat", { method: "POST", body: JSON.stringify({ message, history }) }),
