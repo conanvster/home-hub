@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import {
   View, Text, StyleSheet, FlatList, TextInput,
   TouchableOpacity, KeyboardAvoidingView, Platform,
@@ -8,10 +8,57 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuthStore } from "../../src/store/useAuthStore";
 import { useSettingsStore } from "../../src/store/useSettingsStore";
 import { api } from "../../src/services/api";
+import { fs } from "../../src/utils/font";
 
 const AI_USER = { _id: "ai", email: "ai@agent.local" };
 
+function makeStyles(scale) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: "#111827" },
+
+    // Таби
+    header:        { borderBottomWidth: 1, borderBottomColor: "#374151", paddingVertical: 8, paddingLeft: 12, minHeight: fs(48, scale) },
+    tab:           { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 16, backgroundColor: "#1f2937", flexDirection: "row", alignItems: "center", gap: 4 },
+    tabActive:     { backgroundColor: "#1d4ed8" },
+    tabAI:         { backgroundColor: "#6b21a8" },
+    tabText:       { color: "#9ca3af", fontSize: fs(12, scale) },
+    tabTextActive: { color: "#fff", fontWeight: "600" },
+    badge:         { backgroundColor: "#ef4444", borderRadius: 8, paddingHorizontal: 5, paddingVertical: 1 },
+    badgeText:     { color: "#fff", fontSize: fs(10, scale) },
+
+    // Повідомлення
+    empty:         { color: "#6b7280", textAlign: "center", marginTop: 40, fontSize: fs(14, scale), lineHeight: fs(22, scale) },
+    bubble:        { maxWidth: "80%", borderRadius: 14, padding: 10, gap: 2 },
+    bubbleOwn:     { alignSelf: "flex-end", backgroundColor: "#1d4ed8" },
+    bubbleOther:   { alignSelf: "flex-start", backgroundColor: "#1f2937", borderWidth: 1, borderColor: "#374151" },
+    bubbleAI:      { alignSelf: "flex-start", backgroundColor: "#3b0764", borderWidth: 1, borderColor: "#7e22ce" },
+    bubbleName:    { color: "#3b82f6", fontSize: fs(11, scale), fontWeight: "600" },
+    bubbleNameAI:  { color: "#c084fc", fontSize: fs(11, scale), fontWeight: "600" },
+    bubbleText:    { color: "#fff", fontSize: fs(14, scale) },
+    bubbleTime:    { color: "rgba(255,255,255,0.4)", fontSize: fs(10, scale), alignSelf: "flex-end" },
+
+    // Введення
+    inputRow:    { flexDirection: "row", padding: 10, gap: 8, borderTopWidth: 1, borderTopColor: "#374151", alignItems: "flex-end" },
+    input:       { flex: 1, backgroundColor: "#1f2937", color: "#fff", borderRadius: 20, paddingHorizontal: 14, paddingVertical: 10, fontSize: fs(14, scale), borderWidth: 1, borderColor: "#374151" },
+    inputAI:     { borderColor: "#7e22ce" },
+    sendBtn:     { backgroundColor: "#3b82f6", width: fs(40, scale), height: fs(40, scale), borderRadius: fs(20, scale), justifyContent: "center", alignItems: "center" },
+    sendBtnAI:   { backgroundColor: "#7e22ce" },
+    sendBtnDisabled: { opacity: 0.4 },
+    sendIcon:    { color: "#fff", fontSize: fs(14, scale) },
+
+    // UserPicker
+    pickerHeader:  { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 16, borderBottomWidth: 1, borderBottomColor: "#374151" },
+    pickerClose:   { color: "#9ca3af", fontSize: fs(18, scale) },
+    pickerTitle:   { color: "#fff", fontWeight: "700", fontSize: fs(16, scale) },
+    searchInput:   { backgroundColor: "#1f2937", color: "#fff", borderRadius: 10, padding: 12, fontSize: fs(14, scale), borderWidth: 1, borderColor: "#374151" },
+    userItem:      { backgroundColor: "#1f2937", borderRadius: 10, padding: 14, borderWidth: 1, borderColor: "#374151" },
+    userEmail:     { color: "#fff", fontSize: fs(14, scale) },
+  });
+}
+
 function MessageBubble({ msg, myId }) {
+  const fontScale = useSettingsStore((s) => s.fontScale);
+  const s = useMemo(() => makeStyles(fontScale), [fontScale]);
   const isOwn = msg.senderId === myId;
   const isAI  = msg.senderId === "ai";
   const time = new Date(msg.createdAt).toLocaleTimeString("uk-UA", { hour: "2-digit", minute: "2-digit" });
@@ -25,15 +72,16 @@ function MessageBubble({ msg, myId }) {
   );
 }
 
-function UserPicker({ visible, onClose, onSelect, isLocal }) {
+function UserPicker({ visible, onClose, onSelect }) {
+  const fontScale = useSettingsStore((s) => s.fontScale);
+  const s = useMemo(() => makeStyles(fontScale), [fontScale]);
   const [users, setUsers] = useState([]);
   const [search, setSearch] = useState("");
 
   useEffect(() => {
     if (!visible) return;
-    const fn = isLocal ? api.getChatUsersLocal : api.getChatUsers;
-    fn(search).then(setUsers).catch(console.error);
-  }, [visible, search, isLocal]);
+    api.getChatUsers(search).then(setUsers).catch(console.error);
+  }, [visible, search]);
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
@@ -71,10 +119,10 @@ function UserPicker({ visible, onClose, onSelect, isLocal }) {
 export default function ChatScreen() {
   const user = useAuthStore((s) => s.user);
   const myId = user?._id;
-  const localOnline = useSettingsStore((s) => s.localOnline);
-  const isLocal = localOnline === true;
+  const fontScale = useSettingsStore((s) => s.fontScale);
+  const s = useMemo(() => makeStyles(fontScale), [fontScale]);
 
-  const [selectedUser, setSelectedUser] = useState(null); // null = загальний, AI_USER = AI агент
+  const [selectedUser, setSelectedUser] = useState(null);
   const [messages, setMessages] = useState([]);
   const [users, setUsers] = useState([]);
   const [unread, setUnread] = useState({});
@@ -88,28 +136,12 @@ export default function ChatScreen() {
 
   const isAIChat = selectedUser?._id === "ai";
 
-  // Хелпери API (автоматично local або cloud)
-  const chatApi = {
-    getUsers: (q) => isLocal ? api.getChatUsersLocal(q) : api.getChatUsers(q),
-    getMessages: (recipientId) => isLocal ? api.getChatMessagesLocal(recipientId) : api.getChatMessages(recipientId),
-    sendMessage: (text, recipientId) => isLocal ? api.sendChatMessageLocal(text, recipientId) : api.sendChatMessage(text, recipientId),
-    getUnread: () => isLocal ? api.getChatUnreadLocal() : api.getChatUnread(),
-  };
-
-  // Скидаємо стан при зміні режиму (local/cloud)
-  useEffect(() => {
-    setSelectedUser(null);
-    setMessages([]);
-    setUsers([]);
-    setUnread({});
-  }, [isLocal]);
-
   // Список юзерів + непрочитані (не для AI чату)
   useEffect(() => {
     if (isAIChat) return;
-    chatApi.getUsers().then(setUsers).catch(console.error);
+    api.getChatUsers().then(setUsers).catch(console.error);
     const loadUnread = () => {
-      chatApi.getUnread().then((data) => {
+      api.getChatUnread().then((data) => {
         const map = {};
         data.forEach((d) => { map[d._id] = d.count; });
         setUnread(map);
@@ -118,19 +150,19 @@ export default function ChatScreen() {
     loadUnread();
     const t = setInterval(loadUnread, 10000);
     return () => clearInterval(t);
-  }, [isLocal, isAIChat]);
+  }, [isAIChat]);
 
   // Повідомлення
   const loadMessages = useCallback(() => {
     if (isAIChat) return;
-    chatApi.getMessages(selectedUser?._id)
+    api.getChatMessages(selectedUser?._id)
       .then((data) => {
         setMessages(data);
         setLoading(false);
         if (selectedUser) setUnread((prev) => ({ ...prev, [selectedUser._id]: 0 }));
       })
       .catch((err) => { console.error("Chat load:", err.message); setLoading(false); });
-  }, [selectedUser, isLocal, isAIChat]);
+  }, [selectedUser, isAIChat]);
 
   useEffect(() => {
     if (isAIChat) { setLoading(false); return; }
@@ -148,7 +180,6 @@ export default function ChatScreen() {
     setText("");
     setSending(true);
 
-    // AI режим
     if (isAIChat) {
       const userMsg = {
         _id: `user-${Date.now()}`,
@@ -185,9 +216,8 @@ export default function ChatScreen() {
       return;
     }
 
-    // Звичайний чат
     try {
-      const newMsg = await chatApi.sendMessage(msg, selectedUser?._id);
+      const newMsg = await api.sendChatMessage(msg, selectedUser?._id);
       setMessages((prev) => [...prev, newMsg]);
       setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 100);
     } catch (err) {
@@ -205,21 +235,8 @@ export default function ChatScreen() {
   }
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: "#111827" }}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
-    >
-    <SafeAreaView style={s.container} edges={["bottom"]}>
-
-      {/* Індикатор режиму */}
-      <View style={[s.modeBanner, isLocal ? s.modeBannerLocal : s.modeBannerCloud]}>
-        <Text style={s.modeBannerText}>
-          {isLocal ? "🏡 Локальний режим" : "☁️ Хмарний режим"}
-        </Text>
-      </View>
-
-      {/* Таби розмов */}
+    <SafeAreaView style={s.container} edges={["top", "bottom"]}>
+      {/* Таби розмов — зовні KAV, щоб не зміщувались при клавіатурі */}
       <View style={s.header}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexDirection: "row", gap: 6, alignItems: "center", paddingRight: 8 }}>
           <View style={{ flexDirection: "row", gap: 6, alignItems: "center" }}>
@@ -230,7 +247,6 @@ export default function ChatScreen() {
               <Text style={[s.tabText, !selectedUser && s.tabTextActive]}>💬 Загальний</Text>
             </TouchableOpacity>
 
-            {/* AI агент */}
             <TouchableOpacity
               style={[s.tab, isAIChat && s.tabAI]}
               onPress={() => selectUser(AI_USER)}
@@ -265,13 +281,17 @@ export default function ChatScreen() {
         </ScrollView>
       </View>
 
-
-      <View style={{ flex: 1 }}>
+      {/* KeyboardAvoidingView тільки навколо повідомлень + поля вводу */}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "padding"}
+        keyboardVerticalOffset={0}
+      >
         <FlatList
           ref={listRef}
           data={messages}
           keyExtractor={(m) => m._id}
-          contentContainerStyle={{ padding: 12, gap: 6 }}
+          contentContainerStyle={{ padding: 12, gap: 6, flexGrow: 1 }}
           onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: false })}
           renderItem={({ item }) => <MessageBubble msg={item} myId={myId} />}
           ListEmptyComponent={
@@ -297,7 +317,7 @@ export default function ChatScreen() {
 
         <View style={s.inputRow}>
           <TextInput
-            style={[s.input, isAIChat && s.inputAI, { height: Math.min(Math.max(42, inputHeight), 120) }]}
+            style={[s.input, isAIChat && s.inputAI, { height: Math.min(Math.max(fs(42, fontScale), inputHeight), fs(120, fontScale)) }]}
             value={text}
             onChangeText={setText}
             onContentSizeChange={(e) => setInputHeight(e.nativeEvent.contentSize.height)}
@@ -314,66 +334,16 @@ export default function ChatScreen() {
             {sending ? <ActivityIndicator size="small" color="#fff" /> : <Text style={s.sendIcon}>▶</Text>}
           </TouchableOpacity>
         </View>
-      </View>
+      </KeyboardAvoidingView>
 
       <UserPicker
         visible={showPicker}
         onClose={() => setShowPicker(false)}
-        isLocal={isLocal}
         onSelect={(u) => {
           if (!users.find((x) => x._id === u._id)) setUsers((prev) => [...prev, u]);
           selectUser(u);
         }}
       />
     </SafeAreaView>
-    </KeyboardAvoidingView>
   );
 }
-
-const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#111827" },
-
-  // Режим банер
-  modeBanner: { paddingHorizontal: 12, paddingVertical: 4, flexDirection: "row", alignItems: "center" },
-  modeBannerLocal: { backgroundColor: "#064e3b" },
-  modeBannerCloud: { backgroundColor: "#1e3a5f" },
-  modeBannerText: { color: "#6ee7b7", fontSize: 10, fontWeight: "600" },
-
-  // Таби
-  header: { borderBottomWidth: 1, borderBottomColor: "#374151", paddingVertical: 8, paddingLeft: 12, minHeight: 48 },
-  tab: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 16, backgroundColor: "#1f2937", flexDirection: "row", alignItems: "center", gap: 4 },
-  tabActive: { backgroundColor: "#1d4ed8" },
-  tabAI: { backgroundColor: "#6b21a8" },
-  tabText: { color: "#9ca3af", fontSize: 12 },
-  tabTextActive: { color: "#fff", fontWeight: "600" },
-  badge: { backgroundColor: "#ef4444", borderRadius: 8, paddingHorizontal: 5, paddingVertical: 1 },
-  badgeText: { color: "#fff", fontSize: 10 },
-
-  // Повідомлення
-  empty: { color: "#6b7280", textAlign: "center", marginTop: 40, fontSize: 14, lineHeight: 22 },
-  bubble: { maxWidth: "80%", borderRadius: 14, padding: 10, gap: 2 },
-  bubbleOwn: { alignSelf: "flex-end", backgroundColor: "#1d4ed8" },
-  bubbleOther: { alignSelf: "flex-start", backgroundColor: "#1f2937", borderWidth: 1, borderColor: "#374151" },
-  bubbleAI: { alignSelf: "flex-start", backgroundColor: "#3b0764", borderWidth: 1, borderColor: "#7e22ce" },
-  bubbleName: { color: "#3b82f6", fontSize: 11, fontWeight: "600" },
-  bubbleNameAI: { color: "#c084fc", fontSize: 11, fontWeight: "600" },
-  bubbleText: { color: "#fff", fontSize: 14 },
-  bubbleTime: { color: "rgba(255,255,255,0.4)", fontSize: 10, alignSelf: "flex-end" },
-
-  // Введення
-  inputRow: { flexDirection: "row", padding: 10, gap: 8, borderTopWidth: 1, borderTopColor: "#374151", alignItems: "flex-end" },
-  input: { flex: 1, backgroundColor: "#1f2937", color: "#fff", borderRadius: 20, paddingHorizontal: 14, paddingVertical: 10, fontSize: 14, borderWidth: 1, borderColor: "#374151" },
-  inputAI: { borderColor: "#7e22ce" },
-  sendBtn: { backgroundColor: "#3b82f6", width: 40, height: 40, borderRadius: 20, justifyContent: "center", alignItems: "center" },
-  sendBtnAI: { backgroundColor: "#7e22ce" },
-  sendBtnDisabled: { opacity: 0.4 },
-  sendIcon: { color: "#fff", fontSize: 14 },
-
-  // UserPicker
-  pickerHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 16, borderBottomWidth: 1, borderBottomColor: "#374151" },
-  pickerClose: { color: "#9ca3af", fontSize: 18 },
-  pickerTitle: { color: "#fff", fontWeight: "700", fontSize: 16 },
-  searchInput: { backgroundColor: "#1f2937", color: "#fff", borderRadius: 10, padding: 12, fontSize: 14, borderWidth: 1, borderColor: "#374151" },
-  userItem: { backgroundColor: "#1f2937", borderRadius: 10, padding: 14, borderWidth: 1, borderColor: "#374151" },
-  userEmail: { color: "#fff", fontSize: 14 },
-});

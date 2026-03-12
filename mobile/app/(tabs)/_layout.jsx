@@ -3,6 +3,7 @@ import { createMaterialTopTabNavigator } from "@react-navigation/material-top-ta
 import { useAuthStore } from "../../src/store/useAuthStore";
 import { useSettingsStore } from "../../src/store/useSettingsStore";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { fs } from "../../src/utils/font";
 
 const { Navigator } = createMaterialTopTabNavigator();
 const TopTabs = withLayoutContext(Navigator);
@@ -11,11 +12,17 @@ export default function TabsLayout() {
   const token = useAuthStore((s) => s.token);
   const features = useSettingsStore((s) => s.features);
   const localOnline = useSettingsStore((s) => s.localOnline);
+  const fontScale = useSettingsStore((s) => s.fontScale);
 
   if (!token) return <Redirect href="/(auth)/login" />;
 
-  // Локальні таби доступні лише коли сервер онлайн
+  // Локальні таби — тільки коли локальний сервер онлайн
   const local = (feat) => feat && localOnline === true ? undefined : null;
+
+  // Хмарні таби — тільки якщо функцію ввімкнено (незалежно від локального)
+  const cloud = (feat) => feat ? undefined : null;
+
+  const labelStyle = { fontSize: fs(11, fontScale), fontWeight: "600", textTransform: "none" };
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#111827" }} edges={["top"]}>
@@ -34,46 +41,49 @@ export default function TabsLayout() {
           },
           tabBarActiveTintColor: "#3b82f6",
           tabBarInactiveTintColor: "#6b7280",
-          tabBarLabelStyle: { fontSize: 11, fontWeight: "600", textTransform: "none" },
+          tabBarLabelStyle: labelStyle,
           tabBarPressColor: "#374151",
           tabBarScrollEnabled: true,
           swipeEnabled: true,
         }}
       >
-        {/* Трекінг — завжди (хмара) */}
+        {/* 1. Трекінг — хмара, завжди */}
         <TopTabs.Screen
           name="tracking"
-          options={{
-            title: "🗺️ Трекінг",
-            href: features.tracking ? undefined : null,
-          }}
+          options={{ title: "🗺️ Трекінг", href: cloud(features.tracking) }}
         />
 
-        {/* Локальні таби — тільки якщо локальний сервер доступний */}
+        {/* 2. Канбан — хмара, завжди */}
+        <TopTabs.Screen
+          name="kanban"
+          options={{ title: "📋 Канбан", href: cloud(features.kanban) }}
+        />
+
+        {/* 3. Чат — хмара, завжди */}
+        <TopTabs.Screen
+          name="chat"
+          options={{ title: "💬 Чат", href: cloud(features.chat) }}
+        />
+
+        {/* 4. Дім — локально */}
         <TopTabs.Screen
           name="ha"
           options={{ title: "🏡 Дім", href: local(features.ha) }}
         />
-        <TopTabs.Screen
-          name="kanban"
-          options={{ title: "📋 Канбан", href: local(features.kanban) }}
-        />
+
+        {/* 5. Фото — локально */}
         <TopTabs.Screen
           name="photos"
           options={{ title: "🖼️ Фото", href: local(features.photos) }}
         />
+
+        {/* 6. Файли — локально */}
         <TopTabs.Screen
           name="files"
           options={{ title: "📁 Файли", href: local(features.files) }}
         />
 
-        {/* Чат — завжди (перемикається між local/cloud у середині) */}
-        <TopTabs.Screen
-          name="chat"
-          options={{ title: "💬 Чат" }}
-        />
-
-        {/* Налаштування — завжди */}
+        {/* 7. Налаштування — завжди */}
         <TopTabs.Screen
           name="settings"
           options={{ title: "⚙️ Налаштування" }}

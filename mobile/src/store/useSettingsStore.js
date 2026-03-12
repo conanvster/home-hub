@@ -5,11 +5,12 @@ import { startLocationTracking, stopLocationTracking } from "../tasks/locationTa
 const DEFAULTS = {
   localUrl: "http://192.168.1.34",
   phoneTracking: false,
+  fontScale: 1.5,
   features: {
     tracking: true,
     ha: true,
     kanban: true,
-    chat: false,
+    chat: true,
     photos: true,
     files: true,
   },
@@ -24,6 +25,12 @@ export const useSettingsStore = create((set, get) => ({
       const raw = await AsyncStorage.getItem("settings");
       if (raw) set(JSON.parse(raw));
     } catch {}
+  },
+
+  setFontScale: async (scale) => {
+    const next = { ...get(), fontScale: scale };
+    set({ fontScale: scale });
+    await AsyncStorage.setItem("settings", JSON.stringify(next));
   },
 
   setLocalUrl: async (url) => {

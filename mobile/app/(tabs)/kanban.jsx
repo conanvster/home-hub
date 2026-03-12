@@ -1,10 +1,12 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   Modal, TextInput, RefreshControl, ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { api } from "../../src/services/api";
+import { useSettingsStore } from "../../src/store/useSettingsStore";
+import { fs } from "../../src/utils/font";
 
 const COLUMNS = [
   { key: "idea",         label: "💡 Ідеї" },
@@ -38,6 +40,8 @@ function priorityIcon(p) {
 }
 
 function TaskCard({ task, onPress, showStatus }) {
+  const fontScale = useSettingsStore((s) => s.fontScale);
+  const s = useMemo(() => makeStyles(fontScale), [fontScale]);
   const isIdea    = task.type === "idea";
   const isSubtask = task.type === "subtask";
   return (
@@ -71,6 +75,8 @@ function TaskCard({ task, onPress, showStatus }) {
 }
 
 function IdeaRow({ idea, linkedTasks, collapsed, onToggle, onPress }) {
+  const fontScale = useSettingsStore((s) => s.fontScale);
+  const s = useMemo(() => makeStyles(fontScale), [fontScale]);
   const byStatus = {};
   COLUMNS.forEach((c) => { byStatus[c.key] = linkedTasks.filter((t) => t.column === c.key); });
 
@@ -101,7 +107,7 @@ function IdeaRow({ idea, linkedTasks, collapsed, onToggle, onPress }) {
           </View>
         </View>
         <TouchableOpacity onPress={() => onPress(idea)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <Text style={{ color: "#6b7280", fontSize: 20, lineHeight: 24 }}>···</Text>
+          <Text style={{ color: "#6b7280", fontSize: fs(20, fontScale), lineHeight: fs(24, fontScale) }}>···</Text>
         </TouchableOpacity>
       </TouchableOpacity>
 
@@ -109,7 +115,7 @@ function IdeaRow({ idea, linkedTasks, collapsed, onToggle, onPress }) {
       {!collapsed && (
         <View style={s.ideaTasks}>
           {linkedTasks.length === 0 ? (
-            <Text style={[s.empty, { marginTop: 6, marginBottom: 4, fontSize: 12 }]}>Немає пов'язаних задач</Text>
+            <Text style={[s.empty, { marginTop: 6, marginBottom: 4, fontSize: fs(12, fontScale) }]}>Немає пов'язаних задач</Text>
           ) : (
             linkedTasks.map((t) => (
               <TaskCard key={t._id} task={t} onPress={onPress} showStatus />
@@ -122,6 +128,8 @@ function IdeaRow({ idea, linkedTasks, collapsed, onToggle, onPress }) {
 }
 
 function TaskPickerModal({ visible, onClose, onSelect, allTasks, currentTaskId, linkedIds }) {
+  const fontScale = useSettingsStore((s) => s.fontScale);
+  const s = useMemo(() => makeStyles(fontScale), [fontScale]);
   const [search, setSearch] = useState("");
   const available = allTasks.filter((t) =>
     t._id !== currentTaskId &&
@@ -152,14 +160,14 @@ function TaskPickerModal({ visible, onClose, onSelect, allTasks, currentTaskId, 
               style={[s.taskCard, { gap: 2 }]}
               onPress={() => { onSelect(t); onClose(); }}
             >
-              <Text style={{ color: "#9ca3af", fontSize: 11 }}>
+              <Text style={{ color: "#9ca3af", fontSize: fs(11, fontScale) }}>
                 {COLUMNS.find((c) => c.key === t.column)?.label ?? t.column}
               </Text>
               <Text style={s.taskTitle}>{t.title}</Text>
             </TouchableOpacity>
           ))}
           {available.length === 0 && (
-            <Text style={{ color: "#6b7280", textAlign: "center", marginTop: 20 }}>Не знайдено</Text>
+            <Text style={{ color: "#6b7280", textAlign: "center", marginTop: 20, fontSize: fs(13, fontScale) }}>Не знайдено</Text>
           )}
         </ScrollView>
       </SafeAreaView>
@@ -168,6 +176,8 @@ function TaskPickerModal({ visible, onClose, onSelect, allTasks, currentTaskId, 
 }
 
 function TaskModal({ task, categories, allTasks, onClose, onSave, onDelete }) {
+  const fontScale = useSettingsStore((s) => s.fontScale);
+  const s = useMemo(() => makeStyles(fontScale), [fontScale]);
   const defaultType = task?._defaultType ?? task?.type ?? "task";
   const [title,        setTitle]        = useState(task?.title       ?? "");
   const [desc,         setDesc]         = useState(task?.description ?? "");
@@ -312,22 +322,22 @@ function TaskModal({ task, categories, allTasks, onClose, onSave, onDelete }) {
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
               <Text style={s.fieldLabel}>🔗 Пов'язані задачі</Text>
               <TouchableOpacity onPress={() => setShowPicker(true)} style={s.addCommentBtn}>
-                <Text style={{ color: "#fff", fontSize: 12 }}>+ Зв'язати</Text>
+                <Text style={{ color: "#fff", fontSize: fs(12, fontScale) }}>+ Зв'язати</Text>
               </TouchableOpacity>
             </View>
             {linkedObjects.length === 0 ? (
-              <Text style={{ color: "#6b7280", fontSize: 12 }}>Немає пов'язаних задач</Text>
+              <Text style={{ color: "#6b7280", fontSize: fs(12, fontScale) }}>Немає пов'язаних задач</Text>
             ) : (
               linkedObjects.map((t) => (
                 <View key={t._id} style={[s.comment, { flexDirection: "row", alignItems: "center" }]}>
                   <View style={{ flex: 1 }}>
-                    <Text style={{ color: "#9ca3af", fontSize: 10 }}>
+                    <Text style={{ color: "#9ca3af", fontSize: fs(10, fontScale) }}>
                       {COLUMNS.find((c) => c.key === t.column)?.label ?? t.column}
                     </Text>
-                    <Text style={{ color: "#e5e7eb", fontSize: 13 }} numberOfLines={1}>{t.title}</Text>
+                    <Text style={{ color: "#e5e7eb", fontSize: fs(13, fontScale) }} numberOfLines={1}>{t.title}</Text>
                   </View>
                   <TouchableOpacity onPress={() => removeLink(t._id)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                    <Text style={{ color: "#6b7280", fontSize: 18, lineHeight: 24 }}>×</Text>
+                    <Text style={{ color: "#6b7280", fontSize: fs(18, fontScale), lineHeight: fs(24, fontScale) }}>×</Text>
                   </TouchableOpacity>
                 </View>
               ))
@@ -364,7 +374,7 @@ function TaskModal({ task, categories, allTasks, onClose, onSave, onDelete }) {
               style={s.deleteBtn}
               onPress={() => { onDelete(task._id); onClose(); }}
             >
-              <Text style={{ color: "#f87171", fontWeight: "600" }}>🗑 Видалити задачу</Text>
+              <Text style={{ color: "#f87171", fontWeight: "600", fontSize: fs(14, fontScale) }}>🗑 Видалити задачу</Text>
             </TouchableOpacity>
           )}
         </ScrollView>
@@ -383,6 +393,8 @@ function TaskModal({ task, categories, allTasks, onClose, onSave, onDelete }) {
 }
 
 export default function KanbanScreen() {
+  const fontScale = useSettingsStore((s) => s.fontScale);
+  const s = useMemo(() => makeStyles(fontScale), [fontScale]);
   const [tasks,          setTasks]          = useState([]);
   const [categories,     setCategories]     = useState([]);
   const [loading,        setLoading]        = useState(true);
@@ -473,10 +485,10 @@ export default function KanbanScreen() {
         <Text style={s.headerTitle}>📋 Канбан</Text>
         <View style={{ flexDirection: "row", gap: 8 }}>
           <TouchableOpacity style={s.addBtnIdea} onPress={() => openNew("idea")}>
-            <Text style={{ color: "#fcd34d", fontSize: 12, fontWeight: "600" }}>+ Ідея</Text>
+            <Text style={s.addBtnIdeaText}>+ Ідея</Text>
           </TouchableOpacity>
           <TouchableOpacity style={s.addBtn} onPress={() => openNew("task")}>
-            <Text style={{ color: "#fff", fontSize: 12, fontWeight: "600" }}>+ Задача</Text>
+            <Text style={s.addBtnText}>+ Задача</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -528,7 +540,7 @@ export default function KanbanScreen() {
         <View style={s.errorBanner}>
           <Text style={s.errorText}>❌ {error}</Text>
           <TouchableOpacity onPress={load} style={s.retryBtn}>
-            <Text style={{ color: "#3b82f6", fontSize: 13 }}>Повторити</Text>
+            <Text style={s.retryText}>Повторити</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -619,75 +631,80 @@ export default function KanbanScreen() {
   );
 }
 
-const s = StyleSheet.create({
-  container:    { flex: 1, backgroundColor: "#111827" },
+function makeStyles(scale) {
+  return StyleSheet.create({
+    container:    { flex: 1, backgroundColor: "#111827" },
 
-  // Хедер
-  header:       { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: "#374151" },
-  headerTitle:  { fontSize: 18, fontWeight: "700", color: "#fff" },
-  addBtn:       { backgroundColor: "#1d4ed8", borderRadius: 20, paddingHorizontal: 12, paddingVertical: 7 },
-  addBtnIdea:   { backgroundColor: "#78350f", borderRadius: 20, paddingHorizontal: 12, paddingVertical: 7 },
+    // Хедер
+    header:       { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: "#374151" },
+    headerTitle:  { fontSize: fs(18, scale), fontWeight: "700", color: "#fff" },
+    addBtn:       { backgroundColor: "#1d4ed8", borderRadius: 20, paddingHorizontal: 12, paddingVertical: 7 },
+    addBtnIdea:   { backgroundColor: "#78350f", borderRadius: 20, paddingHorizontal: 12, paddingVertical: 7 },
+    addBtnText:   { color: "#fff", fontSize: fs(12, scale), fontWeight: "600" },
+    addBtnIdeaText:{ color: "#fcd34d", fontSize: fs(12, scale), fontWeight: "600" },
 
-  // Перемикач режиму
-  viewToggle:       { flexDirection: "row", backgroundColor: "#1f2937", margin: 12, borderRadius: 12, padding: 3, gap: 3 },
-  toggleBtn:        { flex: 1, paddingVertical: 7, borderRadius: 10, alignItems: "center" },
-  toggleBtnActive:  { backgroundColor: "#374151" },
-  toggleText:       { color: "#6b7280", fontSize: 13 },
-  toggleTextActive: { color: "#fff", fontWeight: "600" },
+    // Перемикач режиму
+    viewToggle:       { flexDirection: "row", backgroundColor: "#1f2937", margin: 12, borderRadius: 12, padding: 3, gap: 3 },
+    toggleBtn:        { flex: 1, paddingVertical: 7, borderRadius: 10, alignItems: "center" },
+    toggleBtnActive:  { backgroundColor: "#374151" },
+    toggleText:       { color: "#6b7280", fontSize: fs(13, scale) },
+    toggleTextActive: { color: "#fff", fontWeight: "600" },
 
-  // Таби колонок
-  tabs:         { borderBottomWidth: 1, borderBottomColor: "#374151", paddingVertical: 6, maxHeight: 52, flexGrow: 0 },
-  tab:          { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, backgroundColor: "#1f2937", flexDirection: "row", alignItems: "center", gap: 4 },
-  tabActive:    { backgroundColor: "#1d4ed8" },
-  tabText:      { color: "#9ca3af", fontSize: 13 },
-  tabTextActive:{ color: "#fff", fontWeight: "600" },
-  tabBadge:     { backgroundColor: "#374151", borderRadius: 8, paddingHorizontal: 6, paddingVertical: 1 },
-  tabBadgeText: { color: "#9ca3af", fontSize: 10 },
+    // Таби колонок
+    tabs:         { borderBottomWidth: 1, borderBottomColor: "#374151", paddingVertical: 6, maxHeight: fs(52, scale), flexGrow: 0 },
+    tab:          { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, backgroundColor: "#1f2937", flexDirection: "row", alignItems: "center", gap: 4 },
+    tabActive:    { backgroundColor: "#1d4ed8" },
+    tabText:      { color: "#9ca3af", fontSize: fs(13, scale) },
+    tabTextActive:{ color: "#fff", fontWeight: "600" },
+    tabBadge:     { backgroundColor: "#374151", borderRadius: 8, paddingHorizontal: 6, paddingVertical: 1 },
+    tabBadgeText: { color: "#9ca3af", fontSize: fs(10, scale) },
 
-  // Swimlane — ідея
-  ideaRow:      { borderRadius: 14, borderWidth: 1, borderColor: "#78350f", backgroundColor: "#1c1204", overflow: "hidden" },
-  ideaHeader:   { flexDirection: "row", alignItems: "center", padding: 12, gap: 8 },
-  ideaCollapse: { color: "#d97706", fontSize: 13, width: 14 },
-  ideaTitle:    { flex: 1, color: "#fcd34d", fontSize: 14, fontWeight: "700" },
-  ideaStatChip: { fontSize: 11, fontWeight: "600" },
-  ideaTasks:    { paddingHorizontal: 10, paddingBottom: 10, gap: 6 },
+    // Swimlane — ідея
+    ideaRow:      { borderRadius: 14, borderWidth: 1, borderColor: "#78350f", backgroundColor: "#1c1204", overflow: "hidden" },
+    ideaHeader:   { flexDirection: "row", alignItems: "center", padding: 12, gap: 8 },
+    ideaCollapse: { color: "#d97706", fontSize: fs(13, scale), width: fs(14, scale) },
+    ideaTitle:    { flex: 1, color: "#fcd34d", fontSize: fs(14, scale), fontWeight: "700" },
+    ideaStatChip: { fontSize: fs(11, scale), fontWeight: "600" },
+    ideaTasks:    { paddingHorizontal: 10, paddingBottom: 10, gap: 6 },
 
-  // Секції
-  sectionHeader: { flexDirection: "row", alignItems: "center", paddingVertical: 4, paddingHorizontal: 4, gap: 8 },
-  sectionTitle:  { color: "#6b7280", fontSize: 12, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.5 },
+    // Секції
+    sectionHeader: { flexDirection: "row", alignItems: "center", paddingVertical: 4, paddingHorizontal: 4, gap: 8 },
+    sectionTitle:  { color: "#6b7280", fontSize: fs(12, scale), fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.5 },
 
-  // Картки задач
-  taskCard:       { backgroundColor: "#1f2937", borderRadius: 12, padding: 12, borderWidth: 1, borderColor: "#374151", gap: 4 },
-  taskCardIdea:   { backgroundColor: "#1c1204", borderColor: "#78350f" },
-  taskCardSubtask:{ backgroundColor: "#18181b", borderColor: "#374151", marginLeft: 12, borderLeftWidth: 3, borderLeftColor: "#4b5563" },
-  taskTypeLabel:  { color: "#d97706", fontSize: 11, fontWeight: "600" },
-  taskTitle:      { color: "#fff", fontSize: 14, fontWeight: "600" },
-  taskDesc:       { color: "#6b7280", fontSize: 12, lineHeight: 18 },
-  taskCategory:   { color: "#3b82f6", fontSize: 11 },
-  taskMeta:       { color: "#6b7280", fontSize: 11 },
-  statusChip:     { fontSize: 11, fontWeight: "600" },
+    // Картки задач
+    taskCard:       { backgroundColor: "#1f2937", borderRadius: 12, padding: 12, borderWidth: 1, borderColor: "#374151", gap: 4 },
+    taskCardIdea:   { backgroundColor: "#1c1204", borderColor: "#78350f" },
+    taskCardSubtask:{ backgroundColor: "#18181b", borderColor: "#374151", marginLeft: 12, borderLeftWidth: 3, borderLeftColor: "#4b5563" },
+    taskTypeLabel:  { color: "#d97706", fontSize: fs(11, scale), fontWeight: "600" },
+    taskTitle:      { color: "#fff", fontSize: fs(14, scale), fontWeight: "600" },
+    taskDesc:       { color: "#6b7280", fontSize: fs(12, scale), lineHeight: fs(18, scale) },
+    taskCategory:   { color: "#3b82f6", fontSize: fs(11, scale) },
+    taskMeta:       { color: "#6b7280", fontSize: fs(11, scale) },
+    statusChip:     { fontSize: fs(11, scale), fontWeight: "600" },
 
-  // Порожньо / офлайн / помилка
-  empty:        { color: "#6b7280", textAlign: "center", marginTop: 40, fontSize: 14 },
-  errorBanner:  { backgroundColor: "#2d1515", margin: 12, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: "#7f1d1d", alignItems: "center", gap: 8 },
-  errorText:    { color: "#f87171", fontSize: 13 },
-  retryBtn:     { paddingHorizontal: 16, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: "#3b82f6" },
+    // Порожньо / помилка
+    empty:        { color: "#6b7280", textAlign: "center", marginTop: 40, fontSize: fs(14, scale) },
+    errorBanner:  { backgroundColor: "#2d1515", margin: 12, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: "#7f1d1d", alignItems: "center", gap: 8 },
+    errorText:    { color: "#f87171", fontSize: fs(13, scale) },
+    retryBtn:     { paddingHorizontal: 16, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: "#3b82f6" },
+    retryText:    { color: "#3b82f6", fontSize: fs(13, scale) },
 
-  // Модалка
-  modalHeader:  { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 16, borderBottomWidth: 1, borderBottomColor: "#374151" },
-  modalClose:   { color: "#9ca3af", fontSize: 18 },
-  modalTitle:   { color: "#fff", fontWeight: "700", fontSize: 16 },
-  modalSave:    { color: "#3b82f6", fontWeight: "600", fontSize: 15 },
-  input:        { backgroundColor: "#1f2937", color: "#fff", borderRadius: 12, padding: 12, fontSize: 14, borderWidth: 1, borderColor: "#374151" },
-  fieldLabel:   { color: "#9ca3af", fontSize: 12, fontWeight: "600", marginBottom: 6 },
-  row:          { flexDirection: "row", flexWrap: "wrap", gap: 6 },
-  chip:         { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 16, backgroundColor: "#1f2937", borderWidth: 1, borderColor: "#374151" },
-  chipActive:   { backgroundColor: "#1d4ed8", borderColor: "#3b82f6" },
-  chipText:     { color: "#9ca3af", fontSize: 12 },
-  chipTextActive:{ color: "#fff" },
-  comment:      { backgroundColor: "#1f2937", borderRadius: 10, padding: 10, borderWidth: 1, borderColor: "#374151", marginBottom: 6 },
-  commentText:  { color: "#e5e7eb", fontSize: 13 },
-  commentDate:  { color: "#6b7280", fontSize: 11, marginTop: 4 },
-  addCommentBtn:{ backgroundColor: "#3b82f6", borderRadius: 12, paddingHorizontal: 16, justifyContent: "center", alignItems: "center" },
-  deleteBtn:    { alignItems: "center", padding: 14, borderRadius: 12, borderWidth: 1, borderColor: "#7f1d1d", marginTop: 8 },
-});
+    // Модалка
+    modalHeader:  { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 16, borderBottomWidth: 1, borderBottomColor: "#374151" },
+    modalClose:   { color: "#9ca3af", fontSize: fs(18, scale) },
+    modalTitle:   { color: "#fff", fontWeight: "700", fontSize: fs(16, scale) },
+    modalSave:    { color: "#3b82f6", fontWeight: "600", fontSize: fs(15, scale) },
+    input:        { backgroundColor: "#1f2937", color: "#fff", borderRadius: 12, padding: 12, fontSize: fs(14, scale), borderWidth: 1, borderColor: "#374151" },
+    fieldLabel:   { color: "#9ca3af", fontSize: fs(12, scale), fontWeight: "600", marginBottom: 6 },
+    row:          { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+    chip:         { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 16, backgroundColor: "#1f2937", borderWidth: 1, borderColor: "#374151" },
+    chipActive:   { backgroundColor: "#1d4ed8", borderColor: "#3b82f6" },
+    chipText:     { color: "#9ca3af", fontSize: fs(12, scale) },
+    chipTextActive:{ color: "#fff" },
+    comment:      { backgroundColor: "#1f2937", borderRadius: 10, padding: 10, borderWidth: 1, borderColor: "#374151", marginBottom: 6 },
+    commentText:  { color: "#e5e7eb", fontSize: fs(13, scale) },
+    commentDate:  { color: "#6b7280", fontSize: fs(11, scale), marginTop: 4 },
+    addCommentBtn:{ backgroundColor: "#3b82f6", borderRadius: 12, paddingHorizontal: 16, justifyContent: "center", alignItems: "center" },
+    deleteBtn:    { alignItems: "center", padding: 14, borderRadius: 12, borderWidth: 1, borderColor: "#7f1d1d", marginTop: 8 },
+  });
+}

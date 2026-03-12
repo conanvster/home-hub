@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   Switch, TextInput, Alert, ActivityIndicator,
@@ -10,28 +10,67 @@ import { router } from "expo-router";
 import { useAuthStore } from "../../src/store/useAuthStore";
 import { useSettingsStore } from "../../src/store/useSettingsStore";
 import { api } from "../../src/services/api";
+import { fs, FONT_SCALES } from "../../src/utils/font";
 import DebugPanel from "../../src/components/DebugPanel";
 
 const FEATURES = [
-  { key: "tracking", label: "🗺️ Трекінг", desc: "GPS трекінг трекерів" },
-  { key: "ha",       label: "🏡 Дім",      desc: "Home Assistant інтеграція" },
-  { key: "kanban",   label: "📋 Канбан",   desc: "Дошка задач" },
-  { key: "chat",     label: "💬 Чат",      desc: "Сімейний чат" },
-  { key: "photos",   label: "🖼️ Фото",     desc: "Immich — фотогалерея" },
-  { key: "files",    label: "📁 Файли",    desc: "Filebrowser — файловий менеджер" },
+  { key: "tracking", label: "🗺️ Трекінг",  desc: "GPS трекінг трекерів" },
+  { key: "ha",       label: "🏡 Дім",       desc: "Home Assistant інтеграція (локально)" },
+  { key: "kanban",   label: "📋 Канбан",    desc: "Дошка задач (хмара)" },
+  { key: "chat",     label: "💬 Чат",       desc: "Сімейний чат (хмара)" },
+  { key: "photos",   label: "🖼️ Фото",      desc: "Immich — фотогалерея (локально)" },
+  { key: "files",    label: "📁 Файли",     desc: "Filebrowser — файловий менеджер (локально)" },
 ];
+
+function makeStyles(scale) {
+  return StyleSheet.create({
+    container:     { flex: 1, backgroundColor: "#111827" },
+    header:        { paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: "#374151" },
+    headerTitle:   { fontSize: fs(18, scale), fontWeight: "700", color: "#fff" },
+    section:       { gap: 8 },
+    sectionTitle:  { color: "#fff", fontWeight: "700", fontSize: fs(15, scale) },
+    hint:          { color: "#6b7280", fontSize: fs(12, scale) },
+    card:          { backgroundColor: "#1f2937", borderRadius: 12, padding: 14, borderWidth: 1, borderColor: "#374151" },
+    cardLabel:     { color: "#6b7280", fontSize: fs(11, scale) },
+    cardValue:     { color: "#fff", fontSize: fs(15, scale), fontWeight: "500", marginTop: 2 },
+    logoutBtn:     { backgroundColor: "#1f2937", borderRadius: 12, padding: 14, alignItems: "center", borderWidth: 1, borderColor: "#7f1d1d" },
+    logoutText:    { color: "#f87171", fontWeight: "600", fontSize: fs(14, scale) },
+    input:         { backgroundColor: "#1f2937", color: "#fff", borderRadius: 10, padding: 12, fontSize: fs(14, scale), borderWidth: 1, borderColor: "#374151" },
+    urlRow:        { flexDirection: "row", gap: 8 },
+    saveBtn:       { backgroundColor: "#3b82f6", borderRadius: 10, paddingHorizontal: 16, justifyContent: "center" },
+    saveBtnText:   { color: "#fff", fontWeight: "600", fontSize: fs(14, scale) },
+    currentUrl:    { color: "#6b7280", fontSize: fs(11, scale) },
+    featureRow:    { backgroundColor: "#1f2937", borderRadius: 12, padding: 14, flexDirection: "row", alignItems: "center", borderWidth: 1, borderColor: "#374151" },
+    featureLabel:  { color: "#fff", fontSize: fs(14, scale), fontWeight: "500" },
+    featureDesc:   { color: "#6b7280", fontSize: fs(12, scale), marginTop: 2 },
+    passMsg:       { fontSize: fs(13, scale) },
+    changePassBtn: { borderRadius: 12, padding: 14, alignItems: "center", backgroundColor: "#1d4ed8" },
+    changePassText:{ color: "#fff", fontWeight: "600", fontSize: fs(14, scale) },
+    // Font scale picker
+    scaleRow:      { backgroundColor: "#1f2937", borderRadius: 12, padding: 14, flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderWidth: 1, borderColor: "#374151" },
+    scaleLabel:    { color: "#fff", fontSize: fs(14, scale), fontWeight: "500" },
+    scaleOptions:  { flexDirection: "row", gap: 8, flexWrap: "wrap", marginTop: 8 },
+    scaleBtn:      { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, backgroundColor: "#374151", borderWidth: 1, borderColor: "#4b5563" },
+    scaleBtnActive:{ backgroundColor: "#1d4ed8", borderColor: "#3b82f6" },
+    scaleBtnText:  { color: "#9ca3af", fontSize: fs(12, scale) },
+    scaleBtnTextActive: { color: "#fff", fontWeight: "600" },
+  });
+}
 
 export default function SettingsScreen() {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
-  const { localUrl, features, localOnline, phoneTracking, setLocalUrl, toggleFeature, setPhoneTracking, checkLocalServer } = useSettingsStore();
+  const { localUrl, features, localOnline, phoneTracking, fontScale,
+          setLocalUrl, toggleFeature, setPhoneTracking, checkLocalServer, setFontScale } = useSettingsStore();
   const [urlInput, setUrlInput] = useState(localUrl);
 
   const [curPass,  setCurPass]  = useState("");
   const [newPass,  setNewPass]  = useState("");
   const [confPass, setConfPass] = useState("");
-  const [passMsg,  setPassMsg]  = useState(null); // { ok, text }
+  const [passMsg,  setPassMsg]  = useState(null);
   const [passSaving, setPassSaving] = useState(false);
+
+  const s = useMemo(() => makeStyles(fontScale), [fontScale]);
 
   async function handleChangePassword() {
     if (!curPass || !newPass || !confPass) {
@@ -132,19 +171,45 @@ export default function SettingsScreen() {
             secureTextEntry
           />
           {passMsg && (
-            <Text style={{ color: passMsg.ok ? "#22c55e" : "#f87171", fontSize: 13 }}>
+            <Text style={[s.passMsg, { color: passMsg.ok ? "#22c55e" : "#f87171" }]}>
               {passMsg.text}
             </Text>
           )}
           <TouchableOpacity
-            style={[s.saveBtn, { borderRadius: 12, padding: 14, alignItems: "center" }]}
+            style={s.changePassBtn}
             onPress={handleChangePassword}
             disabled={passSaving}
           >
             {passSaving
               ? <ActivityIndicator color="#fff" />
-              : <Text style={{ color: "#fff", fontWeight: "600" }}>Змінити пароль</Text>}
+              : <Text style={s.changePassText}>Змінити пароль</Text>}
           </TouchableOpacity>
+        </View>
+
+        {/* Розмір шрифту */}
+        <View style={s.section}>
+          <Text style={s.sectionTitle}>🔤 Розмір шрифту</Text>
+          <View style={{ gap: 8 }}>
+            <View style={s.scaleRow}>
+              <Text style={s.scaleLabel}>Поточний розмір</Text>
+              <Text style={[s.scaleLabel, { color: "#3b82f6" }]}>
+                {FONT_SCALES.find((f) => f.value === fontScale)?.label ?? `${fontScale}×`}
+              </Text>
+            </View>
+            <View style={s.scaleOptions}>
+              {FONT_SCALES.map((f) => (
+                <TouchableOpacity
+                  key={f.value}
+                  style={[s.scaleBtn, fontScale === f.value && s.scaleBtnActive]}
+                  onPress={() => setFontScale(f.value)}
+                >
+                  <Text style={[s.scaleBtnText, fontScale === f.value && s.scaleBtnTextActive]}>
+                    {f.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
         </View>
 
         {/* Локальний сервер */}
@@ -162,7 +227,7 @@ export default function SettingsScreen() {
               keyboardType="url"
             />
             <TouchableOpacity style={s.saveBtn} onPress={saveUrl}>
-              <Text style={{ color: "#fff", fontWeight: "600" }}>OK</Text>
+              <Text style={s.saveBtnText}>OK</Text>
             </TouchableOpacity>
           </View>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 2 }}>
@@ -227,24 +292,3 @@ export default function SettingsScreen() {
     </SafeAreaView>
   );
 }
-
-const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#111827" },
-  header: { paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: "#374151" },
-  headerTitle: { fontSize: 18, fontWeight: "700", color: "#fff" },
-  section: { gap: 8 },
-  sectionTitle: { color: "#fff", fontWeight: "700", fontSize: 15 },
-  hint: { color: "#6b7280", fontSize: 12 },
-  card: { backgroundColor: "#1f2937", borderRadius: 12, padding: 14, borderWidth: 1, borderColor: "#374151" },
-  cardLabel: { color: "#6b7280", fontSize: 11 },
-  cardValue: { color: "#fff", fontSize: 15, fontWeight: "500", marginTop: 2 },
-  logoutBtn: { backgroundColor: "#1f2937", borderRadius: 12, padding: 14, alignItems: "center", borderWidth: 1, borderColor: "#7f1d1d" },
-  logoutText: { color: "#f87171", fontWeight: "600" },
-  input: { backgroundColor: "#1f2937", color: "#fff", borderRadius: 10, padding: 12, fontSize: 14, borderWidth: 1, borderColor: "#374151" },
-  urlRow: { flexDirection: "row", gap: 8 },
-  saveBtn: { backgroundColor: "#3b82f6", borderRadius: 10, paddingHorizontal: 16, justifyContent: "center" },
-  currentUrl: { color: "#6b7280", fontSize: 11 },
-  featureRow: { backgroundColor: "#1f2937", borderRadius: 12, padding: 14, flexDirection: "row", alignItems: "center", borderWidth: 1, borderColor: "#374151" },
-  featureLabel: { color: "#fff", fontSize: 14, fontWeight: "500" },
-  featureDesc: { color: "#6b7280", fontSize: 12, marginTop: 2 },
-});
