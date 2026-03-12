@@ -7,6 +7,32 @@ html, body, #root {
   margin: 0;
 }
 
+/* ── Масштабування шрифтів (тільки text-* класи, відступи не змінюються) ── */
+
+/* 1.5× */
+[data-font-scale="1.5"] .text-xs   { font-size: 1.125rem  !important; line-height: 1.5rem    !important; }
+[data-font-scale="1.5"] .text-sm   { font-size: 1.3125rem !important; line-height: 1.875rem  !important; }
+[data-font-scale="1.5"] .text-base { font-size: 1.5rem    !important; line-height: 2.25rem   !important; }
+[data-font-scale="1.5"] .text-lg   { font-size: 1.6875rem !important; line-height: 2.625rem  !important; }
+[data-font-scale="1.5"] .text-xl   { font-size: 1.875rem  !important; line-height: 2.625rem  !important; }
+[data-font-scale="1.5"] .text-2xl  { font-size: 2.25rem   !important; line-height: 3rem      !important; }
+[data-font-scale="1.5"] .text-3xl  { font-size: 2.8125rem !important; line-height: 3.375rem  !important; }
+[data-font-scale="1.5"] .text-4xl  { font-size: 3.375rem  !important; line-height: 3.75rem   !important; }
+[data-font-scale="1.5"] .text-5xl  { font-size: 4.5rem    !important; }
+[data-font-scale="1.5"] .text-6xl  { font-size: 5.625rem  !important; }
+
+/* 2× */
+[data-font-scale="2"] .text-xs   { font-size: 1.5rem  !important; line-height: 2rem    !important; }
+[data-font-scale="2"] .text-sm   { font-size: 1.75rem !important; line-height: 2.5rem  !important; }
+[data-font-scale="2"] .text-base { font-size: 2rem    !important; line-height: 3rem    !important; }
+[data-font-scale="2"] .text-lg   { font-size: 2.25rem !important; line-height: 3rem    !important; }
+[data-font-scale="2"] .text-xl   { font-size: 2.5rem  !important; line-height: 3.25rem !important; }
+[data-font-scale="2"] .text-2xl  { font-size: 3rem    !important; line-height: 3.75rem !important; }
+[data-font-scale="2"] .text-3xl  { font-size: 3.75rem !important; line-height: 4.5rem  !important; }
+[data-font-scale="2"] .text-4xl  { font-size: 4.5rem  !important; line-height: 5rem    !important; }
+[data-font-scale="2"] .text-5xl  { font-size: 6rem    !important; }
+[data-font-scale="2"] .text-6xl  { font-size: 7.5rem  !important; }
+
 /* Стилізований скролбар для чату */
 .chat-scroll::-webkit-scrollbar {
   width: 5px;

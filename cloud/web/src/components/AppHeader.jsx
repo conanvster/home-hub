@@ -2,6 +2,34 @@ import { useState, useEffect } from "react";
 import { IS_LOCAL, VERSION, IMMICH_URL, FILEBROWSER_URL, HA_URL } from "../config";
 import { useAuthStore } from "../store/useAuthStore";
 import { api } from "../services/api";
+import { useFontScale } from "../hooks/useFontScale";
+
+function FontScaleSwitcher() {
+  const [scale, setScale] = useFontScale();
+  return (
+    <div className="flex items-center gap-0.5 mx-1 sm:mx-2">
+      {[
+        { v: 1,   label: "A",   title: "Нормальний шрифт" },
+        { v: 1.5, label: "A+",  title: "Середній шрифт" },
+        { v: 2,   label: "A++", title: "Великий шрифт" },
+      ].map(({ v, label, title }) => (
+        <button
+          key={v}
+          title={title}
+          onClick={() => setScale(v)}
+          style={{ fontSize: "11px", lineHeight: 1 }}
+          className={`px-1.5 py-1 rounded transition whitespace-nowrap ${
+            scale === v
+              ? "bg-blue-600 text-white"
+              : "text-gray-400 hover:text-white hover:bg-gray-700"
+          }`}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 function VerificationBanner() {
   const [visible, setVisible] = useState(false);
@@ -83,6 +111,7 @@ export default function AppHeader({ activePage, constrained = false }) {
           <a href={FILEBROWSER_URL} target="_blank" rel="noreferrer" className={inactiveLink + " hidden md:flex"}>📁 Файли</a>
           <a href={HA_URL} target="_blank" rel="noreferrer" className={inactiveLink + " hidden md:flex"}>⚙️ HA</a>
           <span className="text-gray-600 text-xs font-mono mx-2 whitespace-nowrap hidden md:inline">{VERSION}</span>
+          <FontScaleSwitcher />
           <button onClick={logout} className="text-gray-400 hover:text-white text-xs sm:text-sm px-2 sm:px-3 transition whitespace-nowrap">
             Вийти
           </button>
@@ -107,6 +136,7 @@ export default function AppHeader({ activePage, constrained = false }) {
           <a href="/profile" className={navLink(activePage === "profile")}>👤 Профіль</a>
         </nav>
         <span className="text-gray-600 text-xs font-mono mx-2 whitespace-nowrap hidden md:inline">{VERSION}</span>
+        <FontScaleSwitcher />
         <button onClick={logout} className="text-gray-400 hover:text-white text-xs sm:text-sm px-2 sm:px-3 transition whitespace-nowrap">
           Вийти
         </button>
