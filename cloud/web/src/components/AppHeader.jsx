@@ -90,9 +90,8 @@ export default function AppHeader({ activePage, constrained = false }) {
       isActive ? "border-blue-500 text-white" : "border-transparent text-gray-400 hover:text-white"
     }`;
   const inactiveLink = `px-2 sm:px-4 h-full text-xs sm:text-sm border-b-2 border-transparent flex items-center transition text-gray-400 hover:text-white`;
-  const innerCls = constrained
-    ? "max-w-[1024px] mx-auto w-full flex items-center h-12 px-3 sm:px-4"
-    : "flex items-center h-12 px-3 sm:px-4 w-full";
+  // Хедер завжди по центру, max 1400px — як ширина контенту Канбану
+  const innerCls = "max-w-[1400px] mx-auto w-full flex items-center h-12 px-3 sm:px-4";
 
   // ── Локальний режим ──────────────────────────────────────────
   if (IS_LOCAL) {

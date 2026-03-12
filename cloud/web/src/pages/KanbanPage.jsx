@@ -198,7 +198,7 @@ function TaskModal({ task, categories, allTasks, onSave, onDelete, onClose, onOp
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
       <div
-        className="bg-gray-800 rounded-xl w-full max-w-xl shadow-2xl flex flex-col max-h-[92vh]"
+        className="bg-gray-800 rounded-xl w-full max-w-[570px] shadow-2xl flex flex-col max-h-[92vh]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Заголовок */}
@@ -213,7 +213,7 @@ function TaskModal({ task, categories, allTasks, onSave, onDelete, onClose, onOp
         </div>
 
         {/* Контент — скролиться */}
-        <div className="overflow-y-auto flex-1 p-5 flex flex-col gap-5">
+        <div className="overflow-y-auto flex-1 p-5 flex flex-col gap-5 modal-scroll">
 
           {/* Назва */}
           <div>
