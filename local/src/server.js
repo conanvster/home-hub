@@ -27,6 +27,7 @@ app.use("/api/tasks",    auth, require("./routes/tasks"));
 app.use("/api/ha",       auth, require("./routes/ha"));
 app.use("/api/chat",     auth, require("./routes/chat"));
 app.use("/api/agent",    auth, require("./routes/agent"));
+app.use("/api/kb",       auth, require("./routes/kb"));
 
 const PORT = process.env.PORT || 3002;
 const SYNC_CRON = process.env.SYNC_CRON || "0 * * * *";

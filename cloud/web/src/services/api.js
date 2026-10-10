@@ -51,6 +51,12 @@ export const api = {
 
   getLatest: () => request("/logs/latest"),
 
+  // База знань (лише локальний режим — через local-server до хабу на ha.local)
+  kbList: () => request("/kb/list"),
+  kbSearch: (q) => request(`/kb/search?q=${encodeURIComponent(q)}`),
+  kbGet: (path) => request(`/kb/get?path=${encodeURIComponent(path)}`),
+  kbAsk: (question) => request("/kb/ask", { method: "POST", body: JSON.stringify({ question }) }),
+
   createTracker: (data) =>
     request("/trackers", { method: "POST", body: JSON.stringify(data) }),
 

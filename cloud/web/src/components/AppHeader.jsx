@@ -76,7 +76,7 @@ function VerificationBanner() {
  * Єдиний хедер для всього додатку.
  *
  * Props:
- *   activePage   — "kanban" | "map" | "ha" | "chat" | "admin" | "profile"
+ *   activePage   — "kanban" | "map" | "ha" | "chat" | "knowledge" | "admin" | "profile"
  *   isAdmin      — bool  (cloud: з store; local: з store)
  *   constrained  — bool — обмежити ширину до 1024px
  */
@@ -103,6 +103,7 @@ export default function AppHeader({ activePage, constrained = false }) {
             <a href="/kanban" className={navLink(activePage === "kanban")}>Канбан</a>
             <a href="/map"    className={navLink(activePage === "map")}>Трекінг</a>
             <a href="/chat"   className={navLink(activePage === "chat")}>💬 Чат</a>
+            <a href="/knowledge" className={navLink(activePage === "knowledge")}>📚 <span className="hidden sm:inline">Знання</span></a>
             {isAdmin && <a href="/admin" className={navLink(activePage === "admin")}>Адмін</a>}
           </nav>
           <a href="/ha" className={navLink(activePage === "ha")}>🏡 <span className="hidden sm:inline">Дім</span></a>
