@@ -116,6 +116,103 @@ function Markdown({ text }) {
   return <div className="text-gray-200">{blocks}</div>;
 }
 
+// ── Дашборд: що пройшло через базу (показується, поки не відкрито запис) ──
+
+const DEVICE_NAMES = { pc: "ПК", mac: "Mac", voice: "«Марс» (голос)", "home-hub-server": "веб Home Hub" };
+const deviceName = (d) => DEVICE_NAMES[d] || d.replace(/^phone[-_]/, "телефон ");
+
+const KIND_NAMES = {
+  new: "новий запис", update: "оновлення", move: "розкладено в теку", git: "зміна через git",
+  ask: "питання до моделі", assist: "«Марс»: питання", annotate: "анотація посилання",
+};
+const STATE_NAMES = { failed: "помилка", cancelled: "не дочекались", queued: "у черзі", taken: "виконується" };
+
+function when(iso) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  const min = Math.round((Date.now() - d) / 60000);
+  if (min < 1) return "щойно";
+  if (min < 60) return `${min} хв тому`;
+  if (min < 24 * 60) return `${Math.round(min / 60)} год тому`;
+  return d.toLocaleString("uk-UA", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+}
+
+function Tile({ label, value, note, warn }) {
+  return (
+    <div className="bg-gray-800 border border-gray-700 rounded p-3">
+      <div className="text-xs text-gray-400">{label}</div>
+      <div className={`text-2xl font-semibold mt-1 ${warn ? "text-amber-400" : "text-white"}`}>{value}</div>
+      {note && <div className="text-xs text-gray-500 mt-1">{note}</div>}
+    </div>
+  );
+}
+
+function KbDashboard() {
+  const [s, setS] = useState(null);
+  const [error, setError] = useState(null);
+  const load = () => api.kbStats().then((r) => { setS(r); setError(null); }).catch((e) => setError(e.message));
+  useEffect(() => { load(); }, []);
+
+  if (error) return <p className="text-red-400 text-sm">Статистика бази недоступна: {error}</p>;
+  if (!s) return <p className="text-gray-500 text-sm">Завантаження статистики…</p>;
+  const waiting = s.pending.inbox + s.pending.queued + s.pending.in_progress;
+  return (
+    <div className="w-full max-w-4xl mx-auto py-4 text-sm">
+      <div className="flex items-baseline justify-between mb-3">
+        <h2 className="text-lg font-semibold">База знань у цифрах</h2>
+        <button onClick={load} className="text-xs text-blue-400 hover:underline">оновити</button>
+      </div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <Tile label="Записів пройшло через базу" value={s.writes.total}
+          note={`за добу ${s.writes.last_24h} · за тиждень ${s.writes.last_7d}`} />
+        <Tile label="Запитів до моделі (LLM)" value={s.llm.total}
+          note={`за тиждень ${s.llm.last_7d}${s.llm.avg_seconds != null ? ` · в середньому ${s.llm.avg_seconds} с` : ""}${s.llm.failed ? ` · помилок ${s.llm.failed}` : ""}`} />
+        <Tile label="Очікують" value={waiting} warn={waiting > 0}
+          note={`у вхідних ${s.pending.inbox} · у черзі до моделі ${s.pending.queued + s.pending.in_progress}`} />
+        <Tile label="Модель на ПК" value={s.pc.online ? "онлайн" : "вимкнена"} warn={!s.pc.online}
+          note={`останній зв'язок: ${when(s.pc.last_seen)}`} />
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-6 mt-6">
+        <div>
+          <div className="text-xs uppercase tracking-wide text-gray-500 mb-2">Пристрої</div>
+          <table className="w-full">
+            <thead><tr className="text-xs text-gray-500 text-left">
+              <th className="font-normal py-1">пристрій</th><th className="font-normal text-right">записів</th>
+              <th className="font-normal text-right">LLM</th><th className="font-normal text-right pl-3">востаннє</th>
+            </tr></thead>
+            <tbody>
+              {s.devices.map((d) => (
+                <tr key={d.device} className="border-t border-gray-800">
+                  <td className="py-1.5 text-gray-200">{deviceName(d.device)}</td>
+                  <td className="text-right tabular-nums">{d.writes || "—"}</td>
+                  <td className="text-right tabular-nums">{d.llm || "—"}</td>
+                  <td className="text-right text-gray-400 pl-3 whitespace-nowrap">{when(d.last)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div>
+          <div className="text-xs uppercase tracking-wide text-gray-500 mb-2">Остання активність</div>
+          {s.recent.length === 0 ? <p className="text-gray-500">поки нічого</p> : s.recent.map((r, i) => (
+            <div key={i} className="flex gap-3 py-1.5 border-t border-gray-800">
+              <span className="text-gray-500 w-28 shrink-0 whitespace-nowrap">{when(r.at)}</span>
+              <span className={`shrink-0 ${r.type === "llm" ? "text-purple-300" : "text-emerald-300"}`}>{r.type === "llm" ? "LLM" : "запис"}</span>
+              <span className="text-gray-300 flex-1 truncate">
+                {KIND_NAMES[r.kind] || r.kind}
+                {r.state && r.state !== "done" && <span className={r.state === "failed" ? "text-red-400" : "text-amber-400"}> · {STATE_NAMES[r.state] || r.state}</span>}
+                {r.seconds != null && r.state === "done" && <span className="text-gray-500"> · {r.seconds} с</span>}
+              </span>
+              <span className="text-gray-400 shrink-0">{deviceName(r.device)}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Сторінка ──
 
 export default function KnowledgePage() {
@@ -274,9 +371,12 @@ export default function KnowledgePage() {
                   <Markdown text={doc.text || ""} />
                 </>
               ) : !docError && (
-                <div className="text-gray-500 m-auto text-center text-sm">
-                  {entries.length ? `${entries.length} записів у базі. Обери запис ліворуч або постав питання вгорі.` : "Завантаження…"}
-                </div>
+                <>
+                  <KbDashboard />
+                  <div className="text-gray-500 text-center text-sm mt-4">
+                    {entries.length ? `${entries.length} записів у базі. Обери запис ліворуч або постав питання вгорі.` : "Завантаження…"}
+                  </div>
+                </>
               )}
             </main>
           </div>

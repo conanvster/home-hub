@@ -54,6 +54,7 @@ export const api = {
   // База знань (лише локальний режим — через local-server до хабу на ha.local)
   kbList: () => request("/kb/list"),
   kbSearch: (q) => request(`/kb/search?q=${encodeURIComponent(q)}`),
+  kbStats: () => request("/kb/stats"),
   kbGet: (path) => request(`/kb/get?path=${encodeURIComponent(path)}`),
   kbAsk: (question) => request("/kb/ask", { method: "POST", body: JSON.stringify({ question }) }),
 

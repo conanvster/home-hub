@@ -61,6 +61,9 @@ router.get("/search", wrap((req) => {
   return hub("GET", `/api/search?q=${encodeURIComponent(q)}&limit=12`);
 }));
 
+// GET /api/kb/stats — дашборд: записи, запити до моделі, що чекає, пристрої (без текстів)
+router.get("/stats", wrap(() => hub("GET", "/api/stats")));
+
 // GET /api/kb/get?path=… — повний текст запису
 router.get("/get", wrap((req) => hub("GET", `/api/get?path=${encodeURIComponent(String(req.query.path || ""))}`)));
 
