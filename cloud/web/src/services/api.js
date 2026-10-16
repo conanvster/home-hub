@@ -55,6 +55,7 @@ export const api = {
   kbList: () => request("/kb/list"),
   kbSearch: (q) => request(`/kb/search?q=${encodeURIComponent(q)}`),
   kbStats: () => request("/kb/stats"),
+  kbFile: (path, folder) => request("/kb/file", { method: "POST", body: JSON.stringify({ path, folder }) }),
   kbGet: (path) => request(`/kb/get?path=${encodeURIComponent(path)}`),
   kbAsk: (question) => request("/kb/ask", { method: "POST", body: JSON.stringify({ question }) }),
 

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import AppHeader from "../components/AppHeader";
 import { api } from "../services/api";
+import { useAuthStore } from "../store/useAuthStore";
 
 // База знань — домашній хаб (лише локальний режим): питання, пошук і перегляд
 // ідей та напрацювань за теками й заголовками. Дані йдуть через local-server
@@ -213,6 +214,58 @@ function KbDashboard() {
   );
 }
 
+// ── Розкласти запис із вхідних (лише адміністратор; хаб пускає лише з inbox/ у спільну теку) ──
+
+function FileBar({ doc, folders, onFiled }) {
+  const [folder, setFolder] = useState("");
+  const [confirm, setConfirm] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+  useEffect(() => { setFolder(""); setConfirm(false); setError(null); }, [doc.path]);
+
+  async function file() {
+    setBusy(true);
+    setError(null);
+    try {
+      const r = await api.kbFile(doc.path, folder);
+      onFiled(r.saved);
+    } catch (e) {
+      setError(e.message);
+      setConfirm(false);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="mb-4 p-3 rounded border border-amber-700/60 bg-amber-950/30 text-sm">
+      {!confirm ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-amber-300">Запис у вхідних — ще не розкладено.</span>
+          <select value={folder} onChange={(e) => setFolder(e.target.value)}
+            className="bg-gray-800 border border-gray-700 rounded px-2 py-1">
+            <option value="">тека…</option>
+            {folders.map((f) => <option key={f} value={f}>{folderName(f)}</option>)}
+          </select>
+          <button disabled={!folder} onClick={() => setConfirm(true)}
+            className="bg-amber-600 hover:bg-amber-500 disabled:opacity-40 rounded px-3 py-1 font-medium">
+            Перенести
+          </button>
+        </div>
+      ) : (
+        <div className="flex flex-wrap items-center gap-2">
+          <span>Перенести «{doc.title}» у <b>{folderName(folder)}</b>?</span>
+          <button disabled={busy} onClick={file} className="bg-amber-600 hover:bg-amber-500 disabled:opacity-50 rounded px-3 py-1 font-medium">
+            {busy ? "Переношу…" : "Так, перенести"}
+          </button>
+          <button disabled={busy} onClick={() => setConfirm(false)} className="text-gray-400 hover:text-white px-2">Скасувати</button>
+        </div>
+      )}
+      {error && <p className="text-red-400 mt-2">Не перенесено: {error}</p>}
+    </div>
+  );
+}
+
 // ── Сторінка ──
 
 export default function KnowledgePage() {
@@ -226,11 +279,15 @@ export default function KnowledgePage() {
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState(null);
   const [asking, setAsking] = useState(false);
+  const [filingFolders, setFilingFolders] = useState([]); // приходять лише адміністратору
+  const isAdmin = useAuthStore((st) => st.user?.role === "admin");
+
+  const loadList = () => api.kbList()
+    .then((r) => { setEntries(r.entries || []); setFilingFolders(r.filing_folders || []); setListError(null); })
+    .catch((e) => setListError(e.message));
 
   useEffect(() => {
-    api.kbList()
-      .then((r) => setEntries(r.entries || []))
-      .catch((e) => setListError(e.message));
+    loadList();
     const p = new URLSearchParams(window.location.search).get("path");
     if (p) openDoc(p);
   }, []);
@@ -368,6 +425,10 @@ export default function KnowledgePage() {
                     className="md:hidden self-start text-sm text-blue-400 mb-2">← до списку</button>
                   <div className="text-xs text-gray-500 mb-1">{folderName(doc.path.includes("/") ? doc.path.slice(0, doc.path.lastIndexOf("/")) : "")} · {doc.path.split("/").pop()}</div>
                   <h1 className="text-2xl font-bold mb-3">{doc.title}</h1>
+                  {isAdmin && filingFolders.length > 0 && doc.path.startsWith("inbox/") && (
+                    <FileBar doc={doc} folders={filingFolders}
+                      onFiled={async (saved) => { await loadList(); openDoc(saved); }} />
+                  )}
                   <Markdown text={doc.text || ""} />
                 </>
               ) : !docError && (
