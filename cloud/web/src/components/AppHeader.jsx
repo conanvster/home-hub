@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { IS_LOCAL, VERSION, IMMICH_URL, FILEBROWSER_URL, HA_URL } from "../config";
+import { IS_LOCAL, VERSION, IMMICH_URL, FILEBROWSER_URL, HA_URL, LEARNING_URL } from "../config";
 import { useAuthStore } from "../store/useAuthStore";
 import { api } from "../services/api";
 import { useFontScale } from "../hooks/useFontScale";
@@ -100,6 +100,7 @@ export default function AppHeader({ activePage, constrained = false }) {
         <div className={innerCls}>
           <a href="/kanban" className="font-bold text-white mr-3 sm:mr-6 text-sm whitespace-nowrap">🏠 <span className="hidden sm:inline">Home Hub</span></a>
           <nav className="flex flex-1 h-full">
+            <a href={LEARNING_URL} target="_blank" rel="noreferrer" className={inactiveLink}>🎓 <span className="hidden sm:inline">Навчання</span></a>
             <a href="/kanban" className={navLink(activePage === "kanban")}>Канбан</a>
             <a href="/map"    className={navLink(activePage === "map")}>Трекінг</a>
             <a href="/chat"   className={navLink(activePage === "chat")}>💬 Чат</a>
