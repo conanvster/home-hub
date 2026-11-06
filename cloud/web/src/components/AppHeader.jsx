@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { IS_LOCAL, VERSION, IMMICH_URL, FILEBROWSER_URL, HA_URL, LEARNING_URL } from "../config";
+import { IS_LOCAL, VERSION, IMMICH_URL, FILEBROWSER_URL, HA_URL, LEARNING_URL, GIT_URL } from "../config";
 import { useAuthStore } from "../store/useAuthStore";
 import { api } from "../services/api";
 import { useFontScale } from "../hooks/useFontScale";
@@ -111,6 +111,7 @@ export default function AppHeader({ activePage, constrained = false }) {
           <a href={IMMICH_URL} target="_blank" rel="noreferrer" className={inactiveLink + " hidden md:flex"}>🖼 Фото</a>
           <a href={FILEBROWSER_URL} target="_blank" rel="noreferrer" className={inactiveLink + " hidden md:flex"}>📁 Файли</a>
           <a href={HA_URL} target="_blank" rel="noreferrer" className={inactiveLink + " hidden md:flex"}>⚙️ HA</a>
+          <a href={GIT_URL} target="_blank" rel="noreferrer" className={inactiveLink + " hidden md:flex"}>🌿 Git</a>
           <span className="text-gray-600 text-xs font-mono mx-2 whitespace-nowrap hidden md:inline">{VERSION}</span>
           <FontScaleSwitcher />
           <button onClick={logout} className="text-gray-400 hover:text-white text-xs sm:text-sm px-2 sm:px-3 transition whitespace-nowrap">

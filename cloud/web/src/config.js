@@ -8,3 +8,4 @@ export const IMMICH_URL = `http://${_host}:2283`;
 export const FILEBROWSER_URL = `http://${_host}:8080`;
 export const HA_URL = `http://${_host}:8123`;
 export const LEARNING_URL = `http://${_host}:8090`;
+export const GIT_URL = `http://${_host}:3000`;
