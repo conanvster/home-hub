@@ -32,6 +32,9 @@ home-hub/
 └── local/        ← sync сервіс (домашній сервер)
 ```
 
+Мобільний застосунок (React Native, Expo) винесено в окремий репозиторій:
+[home-hub-mobile](https://github.com/conanvster/home-hub-mobile).
+
 ## Стек
 
 | Частина     | Технологія                              |
