@@ -1,0 +1,10 @@
+{
+  "name": "home-hub-regression",
+  "private": true,
+  "description": "Регресійні тести home-hub: run.sh full|upgrade|compare",
+  "type": "module",
+  "dependencies": {
+    "mongodb": "6.21.0",
+    "socket.io-client": "4.8.1"
+  }
+}
