@@ -602,7 +602,9 @@ export default function MapPage() {
 
   useEffect(() => {
     if (IS_LOCAL) return;
-    const socket = io();
+    const token = useAuthStore.getState().token;
+    if (!token) return;
+    const socket = io({ auth: { token } });
     socket.on("location", (log) => setLatest((prev) => ({ ...prev, [log.imei]: log })));
     return () => socket.disconnect();
   }, []);

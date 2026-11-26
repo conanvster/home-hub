@@ -22,18 +22,22 @@ const io = new Server(httpServer, {
 app.set("io", io);
 
 const jwt = require("jsonwebtoken");
+// Лише автентифіковані підключення: раніше анонімний сокет отримував координати
+// всіх трекерів і загальний чат (home-hub #1).
 io.use((socket, next) => {
   const token = socket.handshake.auth?.token;
-  if (!token) return next(); // дозволяємо анонімне підключення для сумісності
+  if (!token) return next(new Error("unauthorized"));
   try {
     socket.user = jwt.verify(token, process.env.JWT_SECRET);
-  } catch {}
+  } catch {
+    return next(new Error("unauthorized"));
+  }
+  if (!socket.user?.id) return next(new Error("unauthorized"));
   next();
 });
 io.on("connection", (socket) => {
-  if (socket.user?.id) {
-    socket.join(`user:${socket.user.id}`);
-  }
+  socket.join(`user:${socket.user.id}`);
+  socket.join("authed");
 });
 
 // Middleware

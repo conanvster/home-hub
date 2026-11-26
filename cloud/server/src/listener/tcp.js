@@ -1,5 +1,6 @@
 const net = require("net");
 const Log = require("../models/Log");
+const Tracker = require("../models/Tracker");
 const { checkZones } = require("../services/geofence");
 
 const EARTH_RADIUS = 6372795;
@@ -84,7 +85,9 @@ module.exports = function startTcpListener({ port, io }) {
 
       try {
         const log = await Log.create(point);
-        io.emit("location", log);
+        // Точку бачить лише власник трекера (home-hub #1), а не всі підключені.
+        const tracker = await Tracker.findOne({ imei: point.imei }, { userId: 1 }).lean();
+        if (tracker?.userId) io.to(`user:${tracker.userId}`).emit("location", log);
         checkZones(log); // geofence перевірка (non-blocking)
         console.log(`Saved log for IMEI ${point.imei}`);
       } catch (err) {

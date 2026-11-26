@@ -83,8 +83,8 @@ router.post("/messages", auth, async (req, res) => {
       io?.to(`user:${recipientId}`).emit("chat:message", msg);
       io?.to(`user:${req.user.id}`).emit("chat:message", msg);
     } else {
-      // Загальний чат — всім
-      io?.emit("chat:message", msg);
+      // Загальний чат — усім, хто увійшов (не анонімним сокетам, home-hub #1)
+      io?.to("authed").emit("chat:message", msg);
     }
 
     res.status(201).json(msg);
