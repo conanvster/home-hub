@@ -24,9 +24,7 @@ const results = [];
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 // Відомі вади, що були й до змін: перевірка лишається (покаже, коли ваду виправлять),
 // але не валить прогін. Ключ — назва перевірки.
-const KNOWN = {
-  "непрочитані b від a = 1": "aggregate у /api/chat/unread порівнює ObjectId з рядком req.user.id — лічильник завжди порожній",
-};
+const KNOWN = {};
 function check(name, ok, detail = "") {
   const known = !ok && KNOWN[name];
   results.push({ name, ok: !!ok, known: known || undefined, detail: ok ? "" : String(detail).slice(0, 300) });
@@ -427,6 +425,12 @@ async function localPhase() {
     check("local: me", (await local("GET", "/api/auth/me", { token: T })).data?.email === creds[0][0]);
     const lt = await local("POST", "/api/tasks", { token: T, body: { title: "Локальна задача" } });
     check("local: задачі", [200, 201].includes(lt.status), desc(lt));
+    const T2 = (await local("POST", "/api/auth/login", { body: { email: creds[1][0], password: creds[1][1] } })).data.token;
+    const id1 = (await local("GET", "/api/auth/me", { token: T })).data?._id;
+    const id2 = (await local("GET", "/api/auth/me", { token: T2 })).data?._id;
+    await local("POST", "/api/chat/messages", { token: T, body: { text: "локальне особисте", recipientId: id2 } });
+    const un = await local("GET", "/api/chat/unread", { token: T2 });
+    check("local: непрочитані = 1", un.status === 200 && un.data.some((x) => String(x._id) === String(id1) && x.count === 1), desc(un));
   });
 }
 

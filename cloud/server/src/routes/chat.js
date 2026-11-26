@@ -1,4 +1,5 @@
 const router = require("express").Router();
+const mongoose = require("mongoose");
 const auth = require("../middleware/auth");
 const ChatMessage = require("../models/ChatMessage");
 const User = require("../models/User");
@@ -54,8 +55,12 @@ router.get("/messages", auth, async (req, res) => {
 // GET /api/chat/unread — кількість непрочитаних по кожному відправнику
 router.get("/unread", auth, async (req, res) => {
   try {
+    // aggregate, на відміну від find, не перетворює типи: recipientId у схемі — ObjectId,
+    // а req.user.id з JWT — рядок, тож без явного ObjectId $match нічого не знаходив (#5).
+    if (!mongoose.isValidObjectId(req.user.id)) return res.json([]);
+    const me = new mongoose.Types.ObjectId(req.user.id);
     const counts = await ChatMessage.aggregate([
-      { $match: { recipientId: req.user.id, read: false } },
+      { $match: { recipientId: me, read: false } },
       { $group: { _id: "$senderId", count: { $sum: 1 } } },
     ]);
     res.json(counts);
