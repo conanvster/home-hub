@@ -5,10 +5,14 @@ const User = require("../models/User");
 const auth = require("../middleware/auth");
 const { sendPasswordReset, sendTelegramCode, sendVerification } = require("../services/email");
 
+// Express розбирає JSON і `?a[$ne]=x` в об'єкти: оператор Mongo замість рядка знаходить чужий документ
+// (seccheck js-nosql-*, задача #6). Усі поля, що йдуть у фільтр, — лише непорожні рядки.
+const isStr = (...v) => v.every((x) => typeof x === "string" && x.length > 0);
+
 // POST /api/auth/login
 router.post("/login", async (req, res) => {
   const { email, password } = req.body;
-  if (!email || !password) return res.status(400).json({ error: "Email and password required" });
+  if (!isStr(email, password)) return res.status(400).json({ error: "Email and password required" });
 
   const user = await User.findOne({ email });
   if (!user || !(await user.comparePassword(password))) {
@@ -27,7 +31,7 @@ router.post("/login", async (req, res) => {
 // POST /api/auth/register
 router.post("/register", async (req, res) => {
   const { email, password } = req.body;
-  if (!email || !password) return res.status(400).json({ error: "Email and password required" });
+  if (!isStr(email, password)) return res.status(400).json({ error: "Email and password required" });
   if (password.length < 6) return res.status(400).json({ error: "Password must be at least 6 characters" });
 
   const exists = await User.findOne({ email });
@@ -58,7 +62,7 @@ router.post("/register", async (req, res) => {
 // POST /api/auth/forgot-password
 router.post("/forgot-password", async (req, res) => {
   const { email } = req.body;
-  if (!email) return res.status(400).json({ error: "Email required" });
+  if (!isStr(email)) return res.status(400).json({ error: "Email required" });
 
   const user = await User.findOne({ email });
   // Always return success to avoid email enumeration
@@ -82,7 +86,7 @@ router.post("/forgot-password", async (req, res) => {
 // POST /api/auth/reset-password
 router.post("/reset-password", async (req, res) => {
   const { token, password } = req.body;
-  if (!token || !password) return res.status(400).json({ error: "Token and password required" });
+  if (!isStr(token, password)) return res.status(400).json({ error: "Token and password required" });
   if (password.length < 6) return res.status(400).json({ error: "Password must be at least 6 characters" });
 
   const user = await User.findOne({
@@ -102,7 +106,7 @@ router.post("/reset-password", async (req, res) => {
 // GET /api/auth/verify-email?token=...
 router.get("/verify-email", async (req, res) => {
   const { token } = req.query;
-  if (!token) return res.status(400).json({ error: "Token required" });
+  if (!isStr(token)) return res.status(400).json({ error: "Token required" });
 
   const user = await User.findOne({
     verificationToken: token,
@@ -175,7 +179,7 @@ router.get("/accept-invite/:token", async (req, res) => {
 // POST /api/auth/accept-invite/:token — встановити пароль і активувати
 router.post("/accept-invite/:token", async (req, res) => {
   const { password } = req.body;
-  if (!password || password.length < 6) return res.status(400).json({ error: "Пароль мінімум 6 символів" });
+  if (!isStr(password) || password.length < 6) return res.status(400).json({ error: "Пароль мінімум 6 символів" });
 
   const user = await User.findOne({
     inviteToken: req.params.token,
@@ -202,7 +206,7 @@ router.post("/accept-invite/:token", async (req, res) => {
 router.post("/change-password", auth, async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
-    if (!currentPassword || !newPassword) return res.status(400).json({ error: "Всі поля обов'язкові" });
+    if (!isStr(currentPassword, newPassword)) return res.status(400).json({ error: "Всі поля обов'язкові" });
     if (newPassword.length < 6) return res.status(400).json({ error: "Новий пароль мінімум 6 символів" });
 
     const user = await User.findById(req.user.id);
@@ -220,7 +224,7 @@ router.post("/change-password", auth, async (req, res) => {
 // POST /api/auth/push-token — зберегти Expo push token
 router.post("/push-token", auth, async (req, res) => {
   const { token } = req.body;
-  if (!token) return res.status(400).json({ error: "token required" });
+  if (!isStr(token)) return res.status(400).json({ error: "token required" });
   await User.findByIdAndUpdate(req.user.id, { expoPushToken: token });
   res.json({ ok: true });
 });

@@ -324,6 +324,46 @@ async function full() {
     check("агент без ключа 503", (await cloud("POST", "/api/agent/chat", { token: T.a, body: { message: "hi" } })).status === 503);
   });
 
+  // Критичні вади з рецензії 26.11 (#6–#8). Окремий користувач e — щоб на вразливій версії
+  // захоплення акаунта не зачепило a/b/c, з якими працюють інші фази.
+  await step("безпека: NoSQL-ін'єкція в токенах (#6)", async () => {
+    const r = await cloud("POST", "/api/auth/register", { body: { email: "e@reg.test", password: "Victim-e-1" } });
+    const tE = r.data?.token;
+    await cloud("POST", "/api/auth/forgot-password", { body: { email: "e@reg.test" } });
+    const inj = await cloud("POST", "/api/auth/reset-password", { body: { token: { $ne: null }, password: "Hacked-e-1" } });
+    check("reset-password: токен-об'єкт 400", inj.status === 400, desc(inj));
+    check("reset-password: пароль жертви не змінено", !(await login(CLOUD, "e@reg.test", "Hacked-e-1")) && !!(await login(CLOUD, "e@reg.test", "Victim-e-1")));
+    const inj2 = await cloud("POST", "/api/auth/reset-password", { body: { token: { $gt: "" }, password: "Hacked-e-2" } });
+    check("reset-password: $gt 400", inj2.status === 400, desc(inj2));
+    const ve = await cloud("GET", "/api/auth/verify-email?token[$ne]=x");
+    check("verify-email: ?token[$ne]= 400", ve.status === 400, desc(ve));
+    check("verify-email: e не підтверджено", (await cloud("GET", "/api/auth/me", { token: tE })).data?.emailVerified !== true);
+    check("forgot-password: email-об'єкт 400", (await cloud("POST", "/api/auth/forgot-password", { body: { email: { $ne: null } } })).status === 400);
+    check("login: email-об'єкт 400", (await cloud("POST", "/api/auth/login", { body: { email: { $ne: null }, password: "x" } })).status === 400);
+    // справжній токен із бази досі працює
+    await cloud("POST", "/api/auth/forgot-password", { body: { email: "e@reg.test" } });
+    const u = await db.collection("users").findOne({ email: "e@reg.test" });
+    check("reset-password рядковим токеном 200", (await cloud("POST", "/api/auth/reset-password", { body: { token: u.resetToken, password: "Victim-e-2" } })).status === 200);
+    check("verify-email рядковим токеном 200", (await cloud("GET", "/api/auth/verify-email?token=" + u.verificationToken)).status === 200);
+  });
+
+  await step("безпека: логи лише свої (#7)", async () => {
+    const all = await cloud("GET", "/api/logs", { token: T.b });
+    check("logs без imei: 200", all.status === 200, desc(all));
+    check("logs без imei: немає чужих точок", Array.isArray(all.data) && !all.data.some((l) => l.imei === "111111"), desc(all));
+    check("logs без imei: свої є", Array.isArray(all.data) && all.data.some((l) => l.imei === "phone-" + id.b), desc(all));
+    const own = await cloud("GET", "/api/logs", { token: T.a });
+    check("logs без imei: власник бачить свої", Array.isArray(own.data) && own.data.some((l) => l.imei === "111111"), desc(own));
+    const inj = await cloud("GET", "/api/logs?imei[$ne]=x", { token: T.b });
+    check("logs ?imei[$ne]=: немає чужих точок", inj.status === 400 || (Array.isArray(inj.data) && !inj.data.some((l) => l.imei === "111111")), desc(inj));
+  });
+
+  await step("безпека: черга telegram лише admin (#8)", async () => {
+    const q = await cloud("GET", "/api/telegram/queue", { token: T.b });
+    check("telegram/queue GET не-адмін 403", q.status === 403, desc(q));
+    check("telegram/queue GET без токена 401", (await cloud("GET", "/api/telegram/queue")).status === 401);
+  });
+
   fs.writeFileSync(`${OUT}/full-users.json`, JSON.stringify({ a: P.a, b: P.b, c: P.c }));
 }
 

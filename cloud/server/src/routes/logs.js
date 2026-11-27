@@ -8,14 +8,15 @@ const { checkZones } = require("../services/geofence");
 router.get("/", auth, async (req, res) => {
   const { imei, from, to, limit = 500 } = req.query;
 
-  // Verify tracker belongs to user
+  // Лише трекери власника (#7): без imei — усі СВОЇ, а не всі в базі; imei — тільки рядок,
+  // інакше ?imei[$ne]=x проходив перевірку власника й віддавав чужі логи.
+  if (imei !== undefined && typeof imei !== "string") return res.status(400).json({ error: "Bad imei" });
   if (imei) {
     const tracker = await Tracker.findOne({ imei, userId: req.user.id });
     if (!tracker) return res.status(403).json({ error: "Forbidden" });
   }
-
-  const filter = {};
-  if (imei) filter.imei = imei;
+  const own = imei ? [imei] : await Tracker.find({ userId: req.user.id }).distinct("imei");
+  const filter = { imei: { $in: own } };
   if (from || to) {
     filter.deviceTime = {};
     if (from) filter.deviceTime.$gte = new Date(from);
